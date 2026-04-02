@@ -20,7 +20,7 @@ export function createRouter(appRoot) {
   }
 
   const root = navigoRootFromViteBase();
-  const router = new Navigo(root, { hash: false });
+  const router = new Navigo(root, { hash: true });
 
   const render = (pageFactory) => {
     const page = pageFactory();
@@ -32,7 +32,7 @@ export function createRouter(appRoot) {
     .on("/", () =>
       render(() =>
         LoginPage({
-          onEnterDemo: () => router.navigate("dashboard"),
+          onEnterDemo: () => router.navigate("/dashboard"),
         }),
       ),
     )

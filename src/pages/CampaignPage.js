@@ -1,11 +1,11 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
-// import { brandAssets } from "../assets/brand.js";
+import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
 export function CampaignPage() {
-  const pathname = window.location?.pathname ?? "/campaigns";
-  const isDashboard = pathname.startsWith("/dashboard");
-  const isCampaigns = pathname.startsWith("/campaigns");
+  const currentRoute = getCurrentRoute();
+  const isDashboard = currentRoute.startsWith("/dashboard");
+  const isCampaigns = currentRoute.startsWith("/campaigns");
 
   const state = {
     openRowId: null,
@@ -50,9 +50,9 @@ export function CampaignPage() {
   <main class="dashboard-layout">
   <aside class="crm-sidebar">
     <div>
-      <img class="crm-sidebar__logo" src="/src/images/sidebar-logo.png" alt="Illus logo" />
+      <img class="crm-sidebar__logo" src="${brandAssets.sidebarLogo}" alt="Illus logo" />
       <section class="crm-sidebar__user">
-        <div class="crm-sidebar__avatar"><img src="/src/images/avatar.png"/></div>
+        <div class="crm-sidebar__avatar"><img src="${brandAssets.avatar}" alt="User avatar" /></div>
         <div>
           <p class="crm-sidebar__name">Stephen Edwin</p>
           <p class="crm-sidebar__role">Marketer</p>
@@ -295,4 +295,12 @@ function menuDuplicateIcon() {
     </clipPath>
   </defs>
 </svg>`;
+}
+
+function getCurrentRoute() {
+  const hash = window.location?.hash ?? "";
+  if (hash.startsWith("#/")) {
+    return hash.slice(1);
+  }
+  return window.location?.pathname ?? "/";
 }

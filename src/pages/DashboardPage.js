@@ -1,6 +1,6 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { StatCard } from "../components/StatCard.js";
-// import { brandAssets } from "../assets/brand";  
+import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
 const statIcons = {
@@ -19,9 +19,9 @@ const statIcons = {
 };
 
 export function DashboardPage() {
-  const pathname = window.location?.pathname ?? "/dashboard";
-  const isDashboard = pathname.startsWith("/dashboard");
-  const isCampaigns = pathname.startsWith("/campaigns");
+  const currentRoute = getCurrentRoute();
+  const isDashboard = currentRoute.startsWith("/dashboard");
+  const isCampaigns = currentRoute.startsWith("/campaigns");
 
   const stats = [
     { value: 32, label: "Currently Running Campaigns", icon: statIcons.megaphone },
@@ -58,9 +58,9 @@ export function DashboardPage() {
     <main class="dashboard-layout">
       <aside class="crm-sidebar">
         <div>
-          <img class="crm-sidebar__logo" src="/src/images/sidebar-logo.png" alt="Illus logo" />
+          <img class="crm-sidebar__logo" src="${brandAssets.sidebarLogo}" alt="Illus logo" />
           <section class="crm-sidebar__user">
-            <div class="crm-sidebar__avatar"><img src="/src/images/avatar.png"/></div>
+            <div class="crm-sidebar__avatar"><img src="${brandAssets.avatar}" alt="User avatar" /></div>
             <div>
               <p class="crm-sidebar__name">Stephen Edwin</p>
               <p class="crm-sidebar__role">Marketer</p>
@@ -117,7 +117,7 @@ export function DashboardPage() {
             </header>
             <p class="panel__sub">Leads</p>
             <div class="chart-placeholder chart-placeholder--line">
-              <img src="/src/images/dashboard-grafik.png"/>
+              <img src="${brandAssets.dashboardGrafik}" alt="Campaign activity chart" />
             </div>
           </article>
           <article class="panel">
@@ -127,7 +127,7 @@ export function DashboardPage() {
             </header>
             <p class="panel__sub">Lead Contribution by Channel</p>
             <div class="chart-placeholder chart-placeholder--donut">
-              <img src="/src/images/dashboard-donut.png"/>
+              <img src="${brandAssets.dashboardDonut}" alt="Content distribution chart" />
             </div>
           </article>
         </section>
@@ -194,4 +194,12 @@ export function DashboardPage() {
       target.innerHTML = markup;
     },
   };
+}
+
+function getCurrentRoute() {
+  const hash = window.location?.hash ?? "";
+  if (hash.startsWith("#/")) {
+    return hash.slice(1);
+  }
+  return window.location?.pathname ?? "/";
 }

@@ -14,6 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   envDir: ".",
+  base: "./",
   
   build: {
     outDir: resolve(__dirname, "dist"),
