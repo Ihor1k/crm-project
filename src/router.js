@@ -1,7 +1,7 @@
 import Navigo from "navigo";
-import { LoginPage } from "./pages/LoginPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { CampaignPage } from "./pages/CampaignPage";
+import { LoginPage } from "./pages/LoginPage.js";
+import { DashboardPage } from "./pages/DashboardPage.js";
+import { CampaignPage } from "./pages/CampaignPage.js";
 
 /**
  * Navigo root aligned with Vite base URL (e.g. "/" or "/repo-name").

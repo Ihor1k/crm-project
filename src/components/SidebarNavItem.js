@@ -1,4 +1,4 @@
-import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml";
+import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
 
 export function SidebarNavItem({ label, to, icon = "circle", active = false }) {
   const safeLabel = escapeHtml(label);

@@ -1,5 +1,5 @@
-import { InputField } from "../components/InputField";
-import { brandAssets } from "../assets/brand";
+import { InputField } from "../components/InputField.js";
+import { brandAssets } from "../assets/brand.js";
 
 export function LoginPage({ onEnterDemo } = {}) {
   const state = {

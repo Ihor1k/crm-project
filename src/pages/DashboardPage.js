@@ -1,7 +1,7 @@
-import { SidebarNavItem } from "../components/SidebarNavItem";
-import { StatCard } from "../components/StatCard";
-import { brandAssets } from "../assets/brand";  
-import { escapeHtml } from "../utils/escapeHtml";
+import { SidebarNavItem } from "../components/SidebarNavItem.js";
+import { StatCard } from "../components/StatCard.js";
+// import { brandAssets } from "../assets/brand";  
+import { escapeHtml } from "../utils/escapeHtml.js";
 
 const statIcons = {
   megaphone: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">

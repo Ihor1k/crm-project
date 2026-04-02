@@ -1,4 +1,4 @@
-import { escapeHtml } from "../utils/escapeHtml";
+import { escapeHtml } from "../utils/escapeHtml.js";
 
 export function StatCard({ icon, value, label }) {
   return `

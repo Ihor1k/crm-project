@@ -1,4 +1,4 @@
-import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml";
+import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
 
 const icons = {
   email: `

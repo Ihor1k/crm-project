@@ -1,6 +1,6 @@
-import { SidebarNavItem } from "../components/SidebarNavItem";
-import { brandAssets } from "../assets/brand";
-import { escapeHtml } from "../utils/escapeHtml";
+import { SidebarNavItem } from "../components/SidebarNavItem.js";
+// import { brandAssets } from "../assets/brand.js";
+import { escapeHtml } from "../utils/escapeHtml.js";
 
 export function CampaignPage() {
   const pathname = window.location?.pathname ?? "/campaigns";
