@@ -1,0 +1,106 @@
+@charset "UTF-8";
+html {
+  scroll-behavior: smooth;
+}
+
+body.noscroll {
+  overflow: hidden;
+}
+
+a {
+  text-decoration: none;
+}
+
+.dark {
+  color: #000;
+}
+
+.yellow {
+  color: #FFE20E;
+}
+
+.green {
+  color: #5EC776;
+}
+
+.orange {
+  color: #C70C01;
+}
+
+.gradient {
+  background: var(--primary-gradiend, linear-gradient(136deg, #00C18B 10.01%, #08AF9F 27.11%, #3826E9 76.49%, #4500FD 89.03%));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 500;
+}
+
+*, *::after, *::before {
+  box-sizing: border-box;
+}
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+}
+
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+  display: block;
+}
+
+body {
+  line-height: 1;
+}
+
+ol, ul {
+  list-style: none;
+}
+
+blockquote, q {
+  quotes: none;
+}
+
+blockquote:before, blockquote:after,
+q:before, q:after {
+  content: "";
+  content: none;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.container {
+  position: relative;
+  width: 100%;
+  max-width: 1440px; /* раніше могло бути 1440px — зменшено для кращої адаптивності */
+  margin: 0 auto;
+  padding-left: clamp(20px, 5vw, 48px);
+  padding-right: clamp(20px, 5vw, 48px);
+  box-sizing: border-box;
+}
+@media screen and (max-width: 480px) {
+  .container {
+    max-width: 480px;
+    padding: 0px 16px;
+  }
+}/*# sourceMappingURL=main.css.map */

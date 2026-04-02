@@ -1,0 +1,35 @@
+<svg width="260" height="260" viewBox="0 0 260 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="130" cy="130" r="124" fill="url(#paint0_radial)"/>
+  <circle cx="130" cy="130" r="121" stroke="url(#paint1_linear)" stroke-opacity="0.45" stroke-width="2"/>
+  <path d="M55 136C74 102 113 79 150 82C189 85 215 113 208 145C201 177 160 199 119 197C78 195 36 171 55 136Z" fill="url(#paint2_linear)" fill-opacity="0.86"/>
+  <path d="M74 83C89 70 116 63 143 65C126 76 112 89 104 106C97 121 96 139 104 157C81 147 67 132 64 115C61 103 65 91 74 83Z" fill="url(#paint3_linear)" fill-opacity="0.9"/>
+  <path d="M176 190C160 201 137 205 115 202C130 193 141 181 148 168C156 154 157 138 150 120C170 130 183 144 187 160C191 173 187 184 176 190Z" fill="url(#paint4_linear)" fill-opacity="0.9"/>
+  <defs>
+    <radialGradient id="paint0_radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(82 70) rotate(48) scale(260)">
+      <stop offset="0.02" stop-color="#FFF28A"/>
+      <stop offset="0.22" stop-color="#8EFF74"/>
+      <stop offset="0.43" stop-color="#57D8C8"/>
+      <stop offset="0.61" stop-color="#8A6BFF"/>
+      <stop offset="0.78" stop-color="#F287A6"/>
+      <stop offset="1" stop-color="#4A2F2F"/>
+    </radialGradient>
+    <linearGradient id="paint1_linear" x1="44" y1="36" x2="214" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#1D1D1D"/>
+    </linearGradient>
+    <linearGradient id="paint2_linear" x1="67" y1="86" x2="204" y2="203" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF6A4"/>
+      <stop offset="0.35" stop-color="#56D5CD"/>
+      <stop offset="0.69" stop-color="#B07DFF"/>
+      <stop offset="1" stop-color="#2D1A1A"/>
+    </linearGradient>
+    <linearGradient id="paint3_linear" x1="66" y1="72" x2="118" y2="162" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6FFB8"/>
+      <stop offset="1" stop-color="#52B5BE"/>
+    </linearGradient>
+    <linearGradient id="paint4_linear" x1="116" y1="196" x2="186" y2="123" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC18B"/>
+      <stop offset="1" stop-color="#833A7E"/>
+    </linearGradient>
+  </defs>
+</svg>
