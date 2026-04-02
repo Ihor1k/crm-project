@@ -1,4 +1,4 @@
-import { createRouter } from "./router";
+import { createRouter } from "./router.js";
 
 const app = document.getElementById("app");
 
