@@ -14,7 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   envDir: ".",
-  base: "./",
+  base: "/crm-project/",
   
   build: {
     outDir: resolve(__dirname, "dist"),

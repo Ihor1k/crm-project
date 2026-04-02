@@ -1,5 +1,5 @@
 import loginLogoUrl from "../images/login-logo.svg";
-import loginOrbUrl from "../images/login-orb.svg";
+import loginOrbUrl from "../images/login-shape.png";
 import sidebarLogoUrl from "../images/sidebar-logo.png";
 import avatarUrl from "../images/avatar.png";
 import dashboardGrafikUrl from "../images/dashboard-grafik.png";

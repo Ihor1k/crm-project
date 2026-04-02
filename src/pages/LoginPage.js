@@ -51,8 +51,8 @@ export function LoginPage({ onEnterDemo } = {}) {
           class="login-page__shape"
           src="${brandAssets.loginOrb}"
           alt=""
-          width="180"
-          height="180"
+          width="250"
+          
           aria-hidden="true"
         />
       </section>

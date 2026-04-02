@@ -5,7 +5,7 @@
 }
 
 .login-page__left {
-  background-image: url("../images/login-left-bg.svg");
+  background-image: url("../images/login-left-background.png");
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
@@ -169,9 +169,9 @@ line-height: normal;
 
 .login-page__shape {
   position: absolute;
-  right: -38px;
-  bottom: -26px;
-  width: min(28vw, 212px);
+  right: 0;
+  bottom: -35px;
+  /* width: min(28vw, 212px); */
   height: auto;
   pointer-events: none;
 }
