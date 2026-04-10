@@ -2,12 +2,14 @@ import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
 
 export function SidebarNavItem({ label, to, icon = "circle", active = false }) {
   const safeLabel = escapeHtml(label);
-  const itemClass = `sidebar-nav__item ${active ? "is-active" : ""}`;
+  const normalizedTo = normalizeRoute(to);
 
-  if (typeof to === "string" && to.length > 0) {
+  const itemClass = `sidebar-nav__item${active ? " is-active" : ""}`;
+
+  if (typeof normalizedTo === "string" && normalizedTo.length > 0) {
     return `
       <li>
-        <a data-navigo href="${escapeHtmlAttr(to)}" class="${itemClass}">
+        <a data-navigo href="${escapeHtmlAttr(normalizedTo)}" class="${itemClass}">
           <span class="sidebar-nav__icon">${iconMarkup(icon)}</span>
           <span class="sidebar-nav-text">${safeLabel}</span>
         </a>
@@ -16,13 +18,15 @@ export function SidebarNavItem({ label, to, icon = "circle", active = false }) {
   }
 
   return `
-      <li>
-        <button type="button" class="${itemClass}">
-          <span class="sidebar-nav__icon">${iconMarkup(icon)}</span>
-          <span class="sidebar-nav-text">${safeLabel}</span>
-        </button>
-      </li>
-    `;
+    <li>
+      <button type="button" class="${itemClass}">
+        <span class="sidebar-nav__icon">${iconMarkup(icon)}</span>
+        <span class="sidebar-nav-text">${safeLabel}</span>
+      </button>
+    </li>
+  `;
+
+  
 }
 
 function iconMarkup(type) {
@@ -58,3 +62,49 @@ function iconMarkup(type) {
   };
   return icons[type] ?? icons.circle;
 }
+
+function normalizeRoute(v) {
+  if (typeof v !== "string") return null;
+  const trimmed = v.trim();
+  if (!trimmed) return null;
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function normalizePathForMatch(v) {
+  // If an item has no route (`to`), it must never be auto-marked active.
+  if (typeof v !== "string") return null;
+  const noQuery = v.split("?")[0] ?? v;
+  const noFrag = noQuery.split("#")[0] ?? noQuery;
+  const normalized = noFrag.trim() || "/";
+  if (normalized === "/") return "/";
+  return normalized.replace(/\/+$/, "");
+}
+
+function getCurrentRoute() {
+  const hash = window.location?.hash ?? "";
+
+  // Primary: Navigo hash mode uses "#/route"
+  if (hash.startsWith("#/")) return stripBase(hash.slice(1));
+
+  // Fallback: handle "#route" as well (defensive)
+  if (hash.startsWith("#") && hash.length > 1) {
+    const h = hash.slice(1);
+    const path = h.startsWith("/") ? h : `/${h}`;
+    return stripBase(path);
+  }
+
+  // Non-hash routing fallback
+  return stripBase(window.location?.pathname ?? "/");
+}
+
+function stripBase(path) {
+  const base = import.meta.env.BASE_URL ?? "/";
+  if (typeof path !== "string" || !path.startsWith("/")) return path;
+  if (base === "/" || base === "") return path;
+  const baseNoSlash = String(base).replace(/\/+$/, "");
+  if (!baseNoSlash || baseNoSlash === "/") return path;
+  if (!path.startsWith(baseNoSlash)) return path;
+  const rest = path.slice(baseNoSlash.length);
+  return rest === "" ? "/" : rest;
+}
+

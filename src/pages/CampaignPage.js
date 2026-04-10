@@ -2,14 +2,15 @@ import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
-export function CampaignPage() {
-  const currentRoute = getCurrentRoute();
-  const isDashboard = currentRoute.startsWith("/dashboard");
-  const isCampaigns = currentRoute.startsWith("/campaigns");
+export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
 
+  const isDashboard = currentRoute === "/" || currentRoute === "/dashboard";
+const isCampaigns = currentRoute === "/campaigns";
+const isAudience = currentRoute === "/audience";
   const state = {
     openRowId: null,
   };
+  let cleanup = null;
 
   const rows = [
     row("Spring Promotion", "CMP-10234", "Running", "EU", "3.8%", "02.04.2026", "12.08.2026"),
@@ -61,9 +62,24 @@ export function CampaignPage() {
 
           <nav aria-label="Primary">
             <ul class="sidebar-nav">
-              ${SidebarNavItem({ label: "Dashboard", to: "/dashboard", icon: "dashboard", active: isDashboard })}
-              ${SidebarNavItem({ label: "Campaign Manager", to: "/campaigns", icon: "campaign", active: isCampaigns })}
-              ${SidebarNavItem({ label: "Audience", icon: "audience" })}
+            ${SidebarNavItem({
+              label: "Dashboard",
+              to: "/dashboard",
+              icon: "dashboard",
+              active: isDashboard,
+            })}
+            ${SidebarNavItem({
+              label: "Campaign Manager",
+              to: "/campaigns",
+              icon: "campaign",
+              active: isCampaigns,
+            })}
+            ${SidebarNavItem({
+              label: "Audience",
+              to: "/audience",
+              icon: "audience",
+              active: isAudience,
+            })}
               ${SidebarNavItem({ label: "Content Library", icon: "library" })}
               ${SidebarNavItem({ label: "Launch Calendar", icon: "calendar" })}
               ${SidebarNavItem({ label: "Experiments", icon: "experiments" })}
@@ -177,19 +193,31 @@ export function CampaignPage() {
       closeMenu();
     });
 
+    const onDocumentClickCapture = (event) => {
+      if (!target.contains(event.target)) return;
+      if (event.target.closest("[data-row-dots]")) return;
+      if (event.target.closest(".row-menu")) return;
+      closeMenu();
+    };
+
     document.addEventListener(
       "click",
-      (event) => {
-        if (!target.contains(event.target)) return;
-        if (event.target.closest("[data-row-dots]")) return;
-        if (event.target.closest(".row-menu")) return;
-        closeMenu();
-      },
+      onDocumentClickCapture,
       { capture: true },
     );
+
+    cleanup = () => {
+      document.removeEventListener("click", onDocumentClickCapture, { capture: true });
+      cleanup = null;
+    };
   }
 
-  return { mount };
+  return {
+    mount,
+    unmount() {
+      if (typeof cleanup === "function") cleanup();
+    },
+  };
 }
 
 function row(name, id, status, geo, conv, created, end) {
@@ -297,10 +325,17 @@ function menuDuplicateIcon() {
 </svg>`;
 }
 
-function getCurrentRoute() {
-  const hash = window.location?.hash ?? "";
-  if (hash.startsWith("#/")) {
-    return hash.slice(1);
-  }
-  return window.location?.pathname ?? "/";
+
+function stripBase(path) {
+  const base = import.meta.env.BASE_URL ?? "/";
+
+  if (typeof path !== "string" || !path.startsWith("/")) return path;
+  if (base === "/" || base === "") return path;
+
+  const baseNoSlash = String(base).replace(/\/+$/, "");
+  if (!baseNoSlash || baseNoSlash === "/") return path;
+  if (!path.startsWith(baseNoSlash)) return path;
+
+  const rest = path.slice(baseNoSlash.length);
+  return rest === "" ? "/" : rest;
 }

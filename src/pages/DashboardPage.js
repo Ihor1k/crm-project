@@ -18,11 +18,7 @@ const statIcons = {
 </svg>`,
 };
 
-export function DashboardPage() {
-  const currentRoute = getCurrentRoute();
-  const isDashboard = currentRoute.startsWith("/dashboard");
-  const isCampaigns = currentRoute.startsWith("/campaigns");
-
+export function DashboardPage({ currentRoute = "/dashboard" } = {}) {
   const stats = [
     { value: 32, label: "Currently Running Campaigns", icon: statIcons.megaphone },
     { value: 6, label: "Scheduled Launches", icon: statIcons.clock },
@@ -54,6 +50,12 @@ export function DashboardPage() {
     ["Flash Promo Week", "Ads", "86", "01.03.2026", "17.03.2026"],
   ];
 
+
+
+const isDashboard = currentRoute === "/" || currentRoute === "/dashboard";
+const isCampaigns = currentRoute === "/campaigns";
+const isAudience = currentRoute === "/audience";
+
   const markup = `
     <main class="dashboard-layout">
       <aside class="crm-sidebar">
@@ -69,9 +71,24 @@ export function DashboardPage() {
 
           <nav aria-label="Primary">
             <ul class="sidebar-nav">
-              ${SidebarNavItem({ label: "Dashboard", to: "/dashboard", icon: "dashboard", active: isDashboard })}
-              ${SidebarNavItem({ label: "Campaign Manager", to: "/campaigns", icon: "campaign", active: isCampaigns })}
-              ${SidebarNavItem({ label: "Audience", icon: "audience" })}
+            ${SidebarNavItem({
+              label: "Dashboard",
+              to: "/dashboard",
+              icon: "dashboard",
+              active: isDashboard,
+            })}
+            ${SidebarNavItem({
+              label: "Campaign Manager",
+              to: "/campaigns",
+              icon: "campaign",
+              active: isCampaigns,
+            })}
+            ${SidebarNavItem({
+              label: "Audience",
+              to: "/audience",
+              icon: "audience",
+              active: isAudience,
+            })}
               ${SidebarNavItem({ label: "Content Library", icon: "library" })}
               ${SidebarNavItem({ label: "Launch Calendar", icon: "calendar" })}
               ${SidebarNavItem({ label: "Experiments", icon: "experiments" })}
@@ -196,10 +213,17 @@ export function DashboardPage() {
   };
 }
 
-function getCurrentRoute() {
-  const hash = window.location?.hash ?? "";
-  if (hash.startsWith("#/")) {
-    return hash.slice(1);
-  }
-  return window.location?.pathname ?? "/";
+
+function stripBase(path) {
+  const base = import.meta.env.BASE_URL ?? "/";
+
+  if (typeof path !== "string" || !path.startsWith("/")) return path;
+  if (base === "/" || base === "") return path;
+
+  const baseNoSlash = String(base).replace(/\/+$/, "");
+  if (!baseNoSlash || baseNoSlash === "/") return path;
+  if (!path.startsWith(baseNoSlash)) return path;
+
+  const rest = path.slice(baseNoSlash.length);
+  return rest === "" ? "/" : rest;
 }
