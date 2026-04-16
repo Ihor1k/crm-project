@@ -2,8 +2,7 @@ import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
-export function AudiencePage({ currentRoute = "/audience" } = {}) {
-
+export function ReportsPage({ currentRoute = "/reports" } = {}) {
   const isDashboard = currentRoute === "/" || currentRoute === "/dashboard";
   const isCampaigns = currentRoute === "/campaigns";
   const isAudience = currentRoute === "/audience";
@@ -12,19 +11,20 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
   const isExperiments = currentRoute === "/experiments";
   const isReports = currentRoute === "/reports";
   const isSettings = currentRoute === "/settings";
+
   const rows = [
-    row("New users", "Users who signed up in the last 30 days", "12 400"),
-    row("Returning users", "Users with at least one previous session", "8 950"),
-    row("Active users", "Users who interacted with the platform in the last 7 days", "4 234"),
-    row("High-value users", "Users with the highest purchase or engagement value", "2 763"),
-    row("Power users", "Highly engaged users with frequent activity", "948"),
-    row("High-value users", "Users with the highest purchase or engagement value", "2 763"),
-    row("Returning users", "Users with at least one previous session", "8 950"),
-    row("New users", "Users who signed up in the last 30 days", "12 400"),
-    row("Power users", "Highly engaged users with frequent activity", "948"),
-    row("Returning users", "Users with at least one previous session", "8 950"),
-    row("High-value users", "Users with the highest purchase or engagement value", "2 763"),
-    row("Active users", "Users who interacted with the platform in the last 7 days", "4 234"),
+    row("Campaign performance report", "Overview of campaign activity and key metrics", "2 days ago"),
+    row("Audience summary report", "High-level overview of audience segments", "1 week ago"),
+    row("Channel distribution report", "Breakdown of campaigns by channel", "5 days ago"),
+    row("Engagement metrics report", "Overview of user engagement across channels", "yesterday"),
+    row("Campaign comparison report", "Side-by-side comparison of campaign performance", "4 days ago"),
+    row("Geographic performance report", "Campaign performance segmented by location", "1 month ago"),
+    row("Campaign performance report", "Overview of campaign activity and key metrics", "2 days ago"),
+    row("Audience summary report", "High-level overview of audience segments", "1 week ago"),
+    row("Campaign performance report", "Overview of campaign activity and key metrics", "2 days ago"),
+    row("Engagement metrics report", "Overview of engagement across campaigns", "yesterday"),
+    row("Campaign comparison report", "Side-by-side comparison of key metrics", "4 days ago"),
+    row("Audience summary report", "Summary of audience cohorts and segments", "1 week ago"),
   ];
 
   const markup = `
@@ -42,48 +42,49 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
 
           <nav aria-label="Primary">
             <ul class="sidebar-nav">
-            ${SidebarNavItem({
-              label: "Dashboard",
-              to: "/dashboard",
-              icon: "dashboard",
-              active: isDashboard,
-            })}
-            ${SidebarNavItem({
-              label: "Campaign Manager",
-              to: "/campaigns",
-              icon: "campaign",
-              active: isCampaigns,
-            })}
-            ${SidebarNavItem({
-              label: "Audience",
-              to: "/audience",
-              icon: "audience",
-              active: isAudience,
-            })}
-            ${SidebarNavItem({
-              label: "Content Library",
-              to: "/content-library",
-              icon: "library",
-              active: isContentLibrary,
-            })}
-            ${SidebarNavItem({
-              label: "Launch Calendar",
-              to: "/launch-calendar",
-              icon: "calendar",
-              active: isLaunchCalendar,
-            })}
-            ${SidebarNavItem({
-              label: "Experiments",
-              to: "/experiments",
-              icon: "experiments",
-              active: isExperiments,
-            })}
-            ${SidebarNavItem({
-              label: "Reports",
-              to: "/reports",
-              icon: "reports",
-              active: isReports,
-            })}
+              ${SidebarNavItem({
+                label: "Dashboard",
+                to: "/dashboard",
+                icon: "dashboard",
+                active: isDashboard,
+              })}
+              ${SidebarNavItem({
+                label: "Campaign Manager",
+                to: "/campaigns",
+                icon: "campaign",
+                active: isCampaigns,
+              })}
+              ${SidebarNavItem({
+                label: "Audience",
+                to: "/audience",
+                icon: "audience",
+                active: isAudience,
+              })}
+              ${SidebarNavItem({
+                label: "Content Library",
+                to: "/content-library",
+                icon: "library",
+                active: isContentLibrary,
+              })}
+              ${SidebarNavItem({
+                label: "Launch Calendar",
+                to: "/launch-calendar",
+                icon: "calendar",
+                active: isLaunchCalendar,
+              })}
+              ${SidebarNavItem({
+                label: "Experiments",
+                to: "/experiments",
+                icon: "experiments",
+                active: isExperiments,
+              })}
+              ${SidebarNavItem({
+                label: "Reports",
+                to: "/reports",
+                icon: "reports",
+                active: isReports,
+              })}
+              
             </ul>
           </nav>
         </div>
@@ -99,15 +100,20 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
       <section class="dashboard-main">
         <header class="dashboard-header">
           <div>
-            <h1>Audience</h1>
-            <p>Predefined audience segments</p>
+            <h1>Reports</h1>
+            <p>Available report templates</p>
           </div>
         </header>
 
-        <section class="campaign-toolbar" aria-label="Audience actions">
+        <section class="campaign-toolbar" aria-label="Reports actions">
           <div class="campaign-search">
             <span class="campaign-search__icon" aria-hidden="true">${searchIcon()}</span>
-            <input class="campaign-search__input" type="search" placeholder="Search" aria-label="Search audience" />
+            <input
+              class="campaign-search__input"
+              type="search"
+              placeholder="Search"
+              aria-label="Search reports"
+            />
           </div>
 
           <div class="campaign-toolbar__actions">
@@ -122,31 +128,20 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
           </div>
         </section>
 
-        <section class="panel campaign-panel" aria-label="Audience table">
-          <div class="campaign-table-wrap audience-table-wrap">
-            <table class="campaign-table campaign-table--manager audience-table">
+        <section class="panel campaign-panel" aria-label="Reports table">
+          <div class="audience-table-wrap">
+            <table class="campaign-table">
               <thead>
                 <tr>
-                  <th>
-                    <span class="table-head-label">
-                      Segment Name
-                      <span class="table-head-sort" aria-hidden="true">${sortIcon()}</span>
-                    </span>
-                  </th>
+                  <th>Report Name</th>
                   <th>Description</th>
-                  <th>
-                    <span class="table-head-label">
-                      Estimated Audience Size
-                      <span class="table-head-sort" aria-hidden="true">${sortIcon()}</span>
-                    </span>
-                  </th>
+                  <th>Last Generated</th>
                 </tr>
               </thead>
               <tbody>
                 ${rows.map(renderRow).join("")}
               </tbody>
             </table>
-
             <div class="table-pagination" aria-label="Pagination">
               <div class="table-pagination__left">Total campaigns: <span class="bold">87</span></div>
               <div class="table-pagination__center">
@@ -173,13 +168,12 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
     mount(target) {
       target.innerHTML = markup;
     },
+    unmount() {},
   };
 }
 
-
-
-function row(name, description, size) {
-  return { name, description, size };
+function row(name, description, lastGenerated) {
+  return { name, description, lastGenerated };
 }
 
 function renderRow(item) {
@@ -187,7 +181,7 @@ function renderRow(item) {
     <tr>
       <td>${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.description)}</td>
-      <td>${escapeHtml(item.size)}</td>
+      <td>${escapeHtml(item.lastGenerated)}</td>
     </tr>
   `;
 }
@@ -200,7 +194,7 @@ function filterIcon() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="14" viewBox="0 0 13 14" fill="none">
   <path d="M10.5563 0C10.9944 0.000513872 11.423 0.128005 11.7907 0.366211C12.1583 0.604429 12.4501 0.943185 12.6296 1.34277C12.809 1.74248 12.8687 2.18603 12.8024 2.61914C12.7361 3.05214 12.5462 3.45646 12.2555 3.78418L8.16472 8.38867V13.417C8.16464 13.5716 8.10315 13.7198 7.99383 13.8291C7.88446 13.9384 7.73634 14 7.58172 14C7.45571 14 7.33299 13.9593 7.23211 13.8838L4.89812 12.1338C4.82568 12.0795 4.76675 12.0087 4.72625 11.9277C4.6858 11.8468 4.66478 11.7574 4.66472 11.667V8.38867L0.571951 3.78418C0.28137 3.45632 0.0921444 3.05125 0.026053 2.61816C-0.0400383 2.18499 0.0202267 1.74146 0.199881 1.3418C0.379551 0.942318 0.671035 0.603263 1.03875 0.365234C1.4065 0.127221 1.83507 0.000316821 2.27312 0H10.5563ZM2.27312 1.16699C2.05997 1.16736 1.85145 1.22886 1.67254 1.34473C1.49356 1.46065 1.35183 1.62585 1.26433 1.82031C1.17686 2.01475 1.14743 2.2306 1.17937 2.44141C1.21136 2.652 1.30303 2.84912 1.44402 3.00879L5.68426 7.7793C5.779 7.88607 5.83176 8.02424 5.83172 8.16699V11.375L6.99871 12.25V8.16699C6.99883 8.02417 7.05122 7.88599 7.14617 7.7793L11.3854 3.00977C11.5268 2.84998 11.619 2.65233 11.6511 2.44141C11.6831 2.2305 11.6536 2.01486 11.5661 1.82031C11.4786 1.6258 11.3369 1.46066 11.1579 1.34473C10.9788 1.22878 10.7697 1.16722 10.5563 1.16699H2.27312Z" fill="#3A3A3A"/>
 </svg>`;
-}   
+}
 
 function exportIcon() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -208,34 +202,3 @@ function exportIcon() {
 </svg>`;
 }
 
-function sortIcon() {
-  return `<svg viewBox="0 0 24 24" focusable="false"><path d="M7 10l5-5 5 5H7zm10 4l-5 5-5-5h10z"/></svg>`;
-}
-
-function getCurrentRoute() {
-  const hash = window.location?.hash ?? "";
-
-  if (hash.startsWith("#/")) return stripBase(hash.slice(1));
-
-  if (hash.startsWith("#") && hash.length > 1) {
-    const h = hash.slice(1);
-    const path = h.startsWith("/") ? h : `/${h}`;
-    return stripBase(path);
-  }
-
-  return stripBase(window.location?.pathname ?? "/");
-}
-
-function stripBase(path) {
-  const base = import.meta.env.BASE_URL ?? "/";
-
-  if (typeof path !== "string" || !path.startsWith("/")) return path;
-  if (base === "/" || base === "") return path;
-
-  const baseNoSlash = String(base).replace(/\/+$/, "");
-  if (!baseNoSlash || baseNoSlash === "/") return path;
-  if (!path.startsWith(baseNoSlash)) return path;
-
-  const rest = path.slice(baseNoSlash.length);
-  return rest === "" ? "/" : rest;
-}

@@ -1,10 +1,18 @@
 import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
 
-export function SidebarNavItem({ label, to, icon = "circle", active = false }) {
+export function SidebarNavItem({ label, to, icon = "circle", active }) {
   const safeLabel = escapeHtml(label);
-  const normalizedTo = normalizeRoute(to);
+  const normalizedTo = normalizeRoute(to ?? routeForSidebarLabel(label));
+  const currentRoute = normalizePathForMatch(getCurrentRoute());
+  const matchTo = normalizePathForMatch(normalizedTo);
 
-  const itemClass = `sidebar-nav__item${active ? " is-active" : ""}`;
+  const isActive =
+    typeof active === "boolean"
+      ? active
+      : typeof matchTo === "string" &&
+        (currentRoute === matchTo || currentRoute.startsWith(`${matchTo}/`));
+
+  const itemClass = `sidebar-nav__item${isActive ? " is-active" : ""}`;
 
   if (typeof normalizedTo === "string" && normalizedTo.length > 0) {
     return `
@@ -25,8 +33,6 @@ export function SidebarNavItem({ label, to, icon = "circle", active = false }) {
       </button>
     </li>
   `;
-
-  
 }
 
 function iconMarkup(type) {
@@ -63,6 +69,16 @@ function iconMarkup(type) {
   return icons[type] ?? icons.circle;
 }
 
+function routeForSidebarLabel(label) {
+  const key = String(label || "").trim().toLowerCase();
+  if (key === "settings") return "/settings";
+  if (key === "reports") return "/reports";
+  if (key === "experiments") return "/experiments";
+  if (key === "launch calendar") return "/launch-calendar";
+  if (key === "content library") return "/content-library";
+  return null;
+}
+
 function normalizeRoute(v) {
   if (typeof v !== "string") return null;
   const trimmed = v.trim();
@@ -71,7 +87,6 @@ function normalizeRoute(v) {
 }
 
 function normalizePathForMatch(v) {
-  // If an item has no route (`to`), it must never be auto-marked active.
   if (typeof v !== "string") return null;
   const noQuery = v.split("?")[0] ?? v;
   const noFrag = noQuery.split("#")[0] ?? noQuery;
@@ -82,18 +97,12 @@ function normalizePathForMatch(v) {
 
 function getCurrentRoute() {
   const hash = window.location?.hash ?? "";
-
-  // Primary: Navigo hash mode uses "#/route"
   if (hash.startsWith("#/")) return stripBase(hash.slice(1));
-
-  // Fallback: handle "#route" as well (defensive)
   if (hash.startsWith("#") && hash.length > 1) {
     const h = hash.slice(1);
     const path = h.startsWith("/") ? h : `/${h}`;
     return stripBase(path);
   }
-
-  // Non-hash routing fallback
   return stripBase(window.location?.pathname ?? "/");
 }
 

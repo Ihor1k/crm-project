@@ -55,6 +55,11 @@ export function DashboardPage({ currentRoute = "/dashboard" } = {}) {
 const isDashboard = currentRoute === "/" || currentRoute === "/dashboard";
 const isCampaigns = currentRoute === "/campaigns";
 const isAudience = currentRoute === "/audience";
+const isContentLibrary = currentRoute === "/content-library";
+const isLaunchCalendar = currentRoute === "/launch-calendar";
+const isExperiments = currentRoute === "/experiments";
+const isReports = currentRoute === "/reports";
+const isSettings = currentRoute === "/settings";
 
   const markup = `
     <main class="dashboard-layout">
@@ -89,10 +94,30 @@ const isAudience = currentRoute === "/audience";
               icon: "audience",
               active: isAudience,
             })}
-              ${SidebarNavItem({ label: "Content Library", icon: "library" })}
-              ${SidebarNavItem({ label: "Launch Calendar", icon: "calendar" })}
-              ${SidebarNavItem({ label: "Experiments", icon: "experiments" })}
-              ${SidebarNavItem({ label: "Reports", icon: "reports" })}
+            ${SidebarNavItem({
+              label: "Content Library",
+              to: "/content-library",
+              icon: "library",
+              active: isContentLibrary,
+            })}
+            ${SidebarNavItem({
+              label: "Launch Calendar",
+              to: "/launch-calendar",
+              icon: "calendar",
+              active: isLaunchCalendar,
+            })}
+            ${SidebarNavItem({
+              label: "Experiments",
+              to: "/experiments",
+              icon: "experiments",
+              active: isExperiments,
+            })}
+            ${SidebarNavItem({
+              label: "Reports",
+              to: "/reports",
+              icon: "reports",
+              active: isReports,
+            })}
             </ul>
           </nav>
         </div>
@@ -100,7 +125,7 @@ const isAudience = currentRoute === "/audience";
         <nav aria-label="Secondary">
           <ul class="sidebar-nav">
             ${SidebarNavItem({ label: "Help", icon: "help" })}
-            ${SidebarNavItem({ label: "Settings", icon: "settings" })}
+            ${SidebarNavItem({ label: "Settings", to: "/settings", icon: "settings", active: isSettings })}
           </ul>
         </nav>
       </aside>
