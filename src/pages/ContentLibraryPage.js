@@ -1,6 +1,11 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
+import contentLibraryImg1 from "../images/content-library-1.png";
+import contentLibraryImg2 from "../images/content-library-2.png";
+import contentLibraryImg3 from "../images/content-library-3.png";
+import contentLibraryImg4 from "../images/content-library-4.png";
+
 
 export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
   const isDashboard = currentRoute === "/" || currentRoute === "/dashboard";
@@ -19,30 +24,30 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
   let cleanup = null;
 
   const rows = [
-    row("Homepage banner – Spring", "Banner", "Active", thumbSvg("#B7F59E", "BANNER")),
-    row("Summer Engagement Boost", "Card", "Active", thumbSvg("#FFC76B", "CARD")),
-    row("Welcome Message", "Text", "Active", thumbSvg("#E9ECEF", "TEXT")),
-    row("Back-to-School Special", "Text", "Inactive", thumbSvg("#E9ECEF", "TEXT")),
-    row("Spring Growth Campaign", "Banner", "Active", thumbSvg("#1E1E1E", "BANNER")),
-    row("Beta Access Promotion", "Banner", "Inactive", thumbSvg("#B9A7FF", "BANNER")),
-    row("Re-Engagement Campaign 2025", "Email", "Inactive", thumbSvg("#DDE5FF", "EMAIL")),
-    row("Black Friday Lead Surge", "Email", "Active", thumbSvg("#DDE5FF", "EMAIL")),
-    row("Homepage banner – Spring", "Banner", "Active", thumbSvg("#B7F59E", "BANNER")),
-    row("Summer Engagement Boost", "Card", "Active", thumbSvg("#FFC76B", "CARD")),
-    row("Welcome Message", "Text", "Active", thumbSvg("#E9ECEF", "TEXT")),
-    row("Back-to-School Special", "Text", "Inactive", thumbSvg("#E9ECEF", "TEXT")),
-    row("Spring Growth Campaign", "Banner", "Active", thumbSvg("#1E1E1E", "BANNER")),
-    row("Beta Access Promotion", "Banner", "Inactive", thumbSvg("#B9A7FF", "BANNER")),
-    row("Re-Engagement Campaign 2025", "Email", "Inactive", thumbSvg("#DDE5FF", "EMAIL")),
-    row("Black Friday Lead Surge", "Email", "Active", thumbSvg("#DDE5FF", "EMAIL")),
-    row("Homepage banner – Spring", "Banner", "Active", thumbSvg("#B7F59E", "BANNER")),
-    row("Summer Engagement Boost", "Card", "Active", thumbSvg("#FFC76B", "CARD")),
-    row("Welcome Message", "Text", "Active", thumbSvg("#E9ECEF", "TEXT")),
-    row("Back-to-School Special", "Text", "Inactive", thumbSvg("#E9ECEF", "TEXT")),
-    row("Spring Growth Campaign", "Banner", "Active", thumbSvg("#1E1E1E", "BANNER")),
-    row("Beta Access Promotion", "Banner", "Inactive", thumbSvg("#B9A7FF", "BANNER")),
-    row("Re-Engagement Campaign 2025", "Email", "Inactive", thumbSvg("#DDE5FF", "EMAIL")),
-    row("Black Friday Lead Surge", "Email", "Active", thumbSvg("#DDE5FF", "EMAIL")),
+    row("Homepage banner – Spring", "Banner", "Active", contentLibraryImg1),
+    row("Summer Engagement Boost", "Card", "Active", contentLibraryImg2),
+    row("Welcome Message", "Text", "Active", contentLibraryImg3),
+    row("Back-to-School Special", "Text", "Inactive", contentLibraryImg4),
+    row("Spring Growth Campaign", "Banner", "Active", contentLibraryImg1),
+    row("Beta Access Promotion", "Banner", "Inactive", contentLibraryImg2),
+    row("Re-Engagement Campaign 2025", "Email", "Inactive", contentLibraryImg3),
+    row("Black Friday Lead Surge", "Email", "Active", contentLibraryImg4),
+    row("Homepage banner – Spring", "Banner", "Active", contentLibraryImg1),
+    row("Summer Engagement Boost", "Card", "Active", contentLibraryImg2),
+    row("Welcome Message", "Text", "Active", contentLibraryImg3),
+    row("Back-to-School Special", "Text", "Inactive", contentLibraryImg4),
+    row("Spring Growth Campaign", "Banner", "Active", contentLibraryImg1),
+    row("Beta Access Promotion", "Banner", "Inactive", contentLibraryImg2),
+    row("Re-Engagement Campaign 2025", "Email", "Inactive", contentLibraryImg3),
+    row("Black Friday Lead Surge", "Email", "Active", contentLibraryImg4),
+    row("Homepage banner – Spring", "Banner", "Active", contentLibraryImg1),
+    row("Summer Engagement Boost", "Card", "Active", contentLibraryImg2),
+    row("Welcome Message", "Text", "Active", contentLibraryImg3),
+    row("Back-to-School Special", "Text", "Inactive", contentLibraryImg4),
+    row("Spring Growth Campaign", "Banner", "Active", contentLibraryImg1),
+    row("Beta Access Promotion", "Banner", "Inactive", contentLibraryImg2),
+    row("Re-Engagement Campaign 2025", "Email", "Inactive", contentLibraryImg3),
+    row("Black Friday Lead Surge", "Email", "Active", contentLibraryImg4),
   ].map((r, idx) => ({ ...r, id: `CL-${String(idx + 1).padStart(3, "0")}` }));
 
   const markup = `
@@ -184,6 +189,72 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     const root = target.querySelector(".dashboard-layout");
     if (!root) return;
 
+    // Thumbnail hover preview (larger image near cursor)
+    const preview = document.createElement("div");
+    preview.setAttribute("aria-hidden", "true");
+    preview.style.position = "fixed";
+    preview.style.left = "0";
+    preview.style.top = "0";
+    preview.style.transform = "translate(0px, 0px)";
+    preview.style.pointerEvents = "none";
+    preview.style.zIndex = "9999";
+    preview.style.background = "rgba(255,255,255,0.98)";
+    preview.style.border = "1px solid rgba(0,0,0,0.08)";
+    preview.style.borderRadius = "10px";
+    // preview.style.boxShadow = "0 16px 50px rgba(0,0,0,0.18)";
+    preview.style.padding = "2px";
+    preview.style.opacity = "0";
+    preview.style.transition = "opacity 120ms ease, transform 120ms ease";
+    preview.innerHTML = `
+      <img
+        data-preview-img
+        alt=""
+        style="display:block;width:320px;max-width:45vw;height:auto;border-radius:10px;"
+      />
+    `;
+    const previewImg = preview.querySelector("[data-preview-img]");
+    document.body.appendChild(preview);
+
+    const hidePreview = () => {
+      preview.style.opacity = "0";
+      preview.style.transform = "translate(0px, 0px)";
+      if (previewImg) previewImg.removeAttribute("src");
+    };
+
+    const movePreview = (clientX, clientY) => {
+      const offset = 18;
+      const maxX = window.innerWidth - 20;
+      const maxY = window.innerHeight - 20;
+      const boxW = Math.min(320 + 20, Math.floor(window.innerWidth * 0.45) + 20);
+      const boxH = Math.floor((boxW - 20) * 0.6) + 20;
+
+      let x = clientX + offset;
+      let y = clientY + offset;
+      if (x + boxW > maxX) x = Math.max(20, clientX - offset - boxW);
+      if (y + boxH > maxY) y = Math.max(20, clientY - offset - boxH);
+
+      preview.style.transform = `translate(${x}px, ${y}px)`;
+    };
+
+    const onThumbMouseOver = (event) => {
+      const img = event.target?.closest?.("img[data-thumb-preview]");
+      if (!img || !root.contains(img) || !previewImg) return;
+      previewImg.src = img.getAttribute("data-thumb-preview") || img.getAttribute("src") || "";
+      preview.style.opacity = "1";
+      movePreview(event.clientX, event.clientY);
+    };
+
+    const onThumbMouseMove = (event) => {
+      if (preview.style.opacity !== "1") return;
+      movePreview(event.clientX, event.clientY);
+    };
+
+    const onThumbMouseOut = (event) => {
+      const img = event.target?.closest?.("img[data-thumb-preview]");
+      if (!img) return;
+      hidePreview();
+    };
+
     const closeMenu = () => {
       state.openRowId = null;
       root.querySelectorAll("[data-row-menu]").forEach((menu) => menu.classList.remove("is-open"));
@@ -221,11 +292,18 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     };
 
     root.addEventListener("click", onRootClick);
+    root.addEventListener("mouseover", onThumbMouseOver);
+    root.addEventListener("mousemove", onThumbMouseMove);
+    root.addEventListener("mouseout", onThumbMouseOut);
     document.addEventListener("click", onDocumentClickCapture, true);
 
     cleanup = () => {
       root.removeEventListener("click", onRootClick);
+      root.removeEventListener("mouseover", onThumbMouseOver);
+      root.removeEventListener("mousemove", onThumbMouseMove);
+      root.removeEventListener("mouseout", onThumbMouseOut);
       document.removeEventListener("click", onDocumentClickCapture, true);
+      preview.remove();
       cleanup = null;
     };
   }
@@ -247,7 +325,14 @@ function renderRow(item) {
   return `
     <tr>
       <td>
-        <img src="${escapeHtmlAttr(item.thumb)}" alt="" width="56" height="32" />
+        <img
+          src="${escapeHtmlAttr(item.thumb)}"
+          data-thumb-preview="${escapeHtmlAttr(item.thumb)}"
+          alt="${escapeHtmlAttr(item.name)} preview"
+          width="56"
+          height="32"
+          style="border-radius:10px;cursor:zoom-in;"
+        />
       </td>
       <td>${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.type)}</td>
@@ -271,12 +356,8 @@ function cssEscape(v) {
   return String(v).replace(/"/g, '\\"');
 }
 
-function thumbSvg(bg, label) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="64" viewBox="0 0 112 64">
-  <rect width="112" height="64" rx="8" fill="${bg}"/>
-  <text x="56" y="36" text-anchor="middle" font-family="DM Sans, Arial" font-size="14" fill="#111">${label}</text>
-  </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+function thumbSvg() {
+  return contentLibraryImg;
 }
 
 function dotsIcon() {
