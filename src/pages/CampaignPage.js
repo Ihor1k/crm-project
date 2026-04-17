@@ -2,6 +2,7 @@ import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
+
 export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
 
   const isDashboard = currentRoute === "/" || currentRoute === "/dashboard";
@@ -127,7 +128,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
             <h1>Campaign Manager</h1>
             <p>Manage your marketing campaigns</p>
           </div>
-          <button type="button" class="dashboard-header__action">+ Create Campaign</button>
+          <button type="button" class="dashboard-header__action" data-create-campaign-btn>+ Create Campaign</button>
         </header>
 
         <section class="campaign-toolbar" aria-label="Campaign actions">
@@ -179,6 +180,115 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
             </table>
           </div>
         </section>
+
+        <div class="crm-modal" data-create-campaign-modal aria-hidden="true">
+          <div class="crm-modal__backdrop" data-modal-close></div>
+          <div class="crm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="create-campaign-title">
+            <div class="crm-modal__head">
+              <div>
+                <h2 class="crm-modal__title" id="create-campaign-title">Create Campaign</h2>
+                <p class="crm-modal__subtitle">Configure campaign settings and parameters</p>
+              </div>
+              <button type="button" class="crm-modal__close" aria-label="Close" data-modal-close>×</button>
+            </div>
+
+            <div class="crm-modal__section">
+              <div class="crm-modal__section-label">Basic Information & Channel Configuration</div>
+              <div class="crm-form-grid">
+                <label class="crm-field">
+                  <span class="crm-field__label">Campaign Name <span class="crm-field__req">*</span></span>
+                  <input class="crm-field__input" type="text" placeholder="Enter Campaign Name" />
+                </label>
+                <label class="crm-field">
+                  <span class="crm-field__label">Channel <span class="crm-field__req">*</span></span>
+                  <select class="crm-field__input">
+                    <option value="" selected disabled>Select Channel</option>
+                    <option>Web</option>
+                    <option>Email</option>
+                    <option>Ads</option>
+                    <option>Push</option>
+                    <option>Social</option>
+                    <option>In-app</option>
+                  </select>
+                </label>
+                <label class="crm-field crm-field--full">
+                  <span class="crm-field__label">Description</span>
+                  <input class="crm-field__input" type="text" placeholder="Enter description" />
+                </label>
+              </div>
+            </div>
+
+            <div class="crm-modal__divider"></div>
+
+            <div class="crm-modal__section">
+              <div class="crm-modal__section-label">Geo Targeting & Audience</div>
+              <div class="crm-form-grid">
+                <label class="crm-field">
+                  <span class="crm-field__label">Geo</span>
+                  <select class="crm-field__input">
+                    <option value="" selected disabled>Select Geo</option>
+                    <option>Global</option>
+                    <option>EU</option>
+                    <option>US</option>
+                    <option>LATAM</option>
+                    <option>APAC</option>
+                  </select>
+                </label>
+                <label class="crm-field">
+                  <span class="crm-field__label">Audience Segment</span>
+                  <select class="crm-field__input">
+                    <option value="" selected disabled>Select Segment</option>
+                    <option>New Users</option>
+                    <option>Returning Users</option>
+                    <option>High Intent</option>
+                    <option>Churn Risk</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="crm-modal__divider"></div>
+
+            <div class="crm-modal__section">
+              <div class="crm-modal__section-label">Campaign Schedule</div>
+              <div class="crm-form-grid">
+                <label class="crm-field">
+                  <span class="crm-field__label">Start Date <span class="crm-field__req">*</span></span>
+                  <input class="crm-field__input" type="date" />
+                </label>
+                <label class="crm-field">
+                  <span class="crm-field__label">End Date</span>
+                  <input class="crm-field__input" type="date" />
+                </label>
+              </div>
+            </div>
+
+            <div class="crm-modal__divider"></div>
+
+            <div class="crm-modal__section">
+              <div class="crm-modal__section-label">Linked Content</div>
+              <div class="crm-form-grid">
+                <label class="crm-field crm-field--full">
+                  <span class="crm-field__label">Linked Content</span>
+                  <select class="crm-field__input">
+                    <option value="" selected disabled>Select Content</option>
+                    <option>Homepage banner – Spring</option>
+                    <option>Summer Engagement Boost</option>
+                    <option>Welcome Message</option>
+                    <option>Back-to-School Special</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="crm-modal__footer">
+              <div class="crm-modal__actions">
+                <button type="button" class="crm-btn crm-btn--link" data-modal-close>Cancel</button>
+                <button type="button" class="crm-btn crm-btn--disabled" aria-disabled="true">Save Campaign</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   `;
@@ -188,6 +298,31 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
 
     const root = target.querySelector(".dashboard-layout");
     if (!root) return;
+
+    const modal = root.querySelector("[data-create-campaign-modal]");
+    const createBtn = root.querySelector("[data-create-campaign-btn]");
+    let lastFocusedEl = null;
+
+    const setModalOpen = (open) => {
+      if (!modal) return;
+      modal.classList.toggle("is-open", open);
+      modal.setAttribute("aria-hidden", open ? "false" : "true");
+      document.documentElement.classList.toggle("has-modal", open);
+      if (open) {
+        lastFocusedEl = document.activeElement;
+        const firstField = modal.querySelector("input, select, button");
+        if (firstField) firstField.focus();
+      } else if (lastFocusedEl && typeof lastFocusedEl.focus === "function") {
+        lastFocusedEl.focus();
+      }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      if (!modal || !modal.classList.contains("is-open")) return;
+      event.preventDefault();
+      setModalOpen(false);
+    };
 
     const closeMenu = () => {
       state.openRowId = null;
@@ -201,7 +336,21 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       if (menu) menu.classList.add("is-open");
     };
 
-    root.addEventListener("click", (event) => {
+    const onRootClick = (event) => {
+      const modalClose = event.target.closest?.("[data-modal-close]");
+      if (modalClose && modal && modal.classList.contains("is-open")) {
+        event.preventDefault();
+        setModalOpen(false);
+        return;
+      }
+
+      const createCampaign = event.target.closest?.("[data-create-campaign-btn]");
+      if (createCampaign) {
+        event.preventDefault();
+        setModalOpen(true);
+        return;
+      }
+
       const dotsBtn = event.target.closest("[data-row-dots]");
       if (dotsBtn) {
         event.preventDefault();
@@ -216,7 +365,10 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       if (event.target.closest(".row-menu")) return;
 
       closeMenu();
-    });
+    };
+
+    root.addEventListener("click", onRootClick);
+    document.addEventListener("keydown", onKeyDown);
 
     const onDocumentClickCapture = (event) => {
       if (!target.contains(event.target)) return;
@@ -232,6 +384,9 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     );
 
     cleanup = () => {
+      root.removeEventListener("click", onRootClick);
+      document.removeEventListener("keydown", onKeyDown);
+      document.documentElement.classList.remove("has-modal");
       document.removeEventListener("click", onDocumentClickCapture, { capture: true });
       cleanup = null;
     };

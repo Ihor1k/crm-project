@@ -14,7 +14,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   envDir: ".",
-  base: "/crm-project/",
+  // Use a relative base so the build works on GitHub Pages
+  // regardless of the repo name / casing (and also from file:// previews).
+  base: "./",
   
   build: {
     outDir: resolve(__dirname, "dist"),

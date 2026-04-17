@@ -2,6 +2,8 @@ import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { StatCard } from "../components/StatCard.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
+import modalImg from "../images/modal-img.png"
+
 
 const statIcons = {
   megaphone: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -136,7 +138,7 @@ const isSettings = currentRoute === "/settings";
             <h1>Dashboard</h1>
             <p>Overview of current marketing activity</p>
           </div>
-          <button type="button" class="dashboard-header__action">+ Create Campaign</button>
+          <button type="button" class="dashboard-header__action" data-create-campaign-btn>+ Create Campaign</button>
         </header>
 
         <section class="stats-grid" aria-label="Stats">
@@ -227,6 +229,81 @@ const isSettings = currentRoute === "/settings";
             </div>
           </article>
         </section>
+
+        <div class="crm-modal" data-create-content-modal aria-hidden="true">
+          <div class="crm-modal__backdrop" data-modal-close></div>
+          <div class="crm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="create-content-title">
+            <div class="crm-modal__head">
+              <div>
+                <h2 class="crm-modal__title" id="create-content-title">Create Content</h2>
+                <p class="crm-modal__subtitle">Configure content settings and basic attributes</p>
+              </div>
+              <button type="button" class="crm-modal__close" aria-label="Close" data-modal-close>×</button>
+            </div>
+
+            <div class="crm-modal__section">
+              <div class="crm-modal__section-label">Basic Information</div>
+              <div class="crm-form-grid">
+                <label class="crm-field">
+                  <span class="crm-field__label">Content Name <span class="crm-field__req">*</span></span>
+                  <input class="crm-field__input" type="text" placeholder="Enter Content Name" />
+                </label>
+                <label class="crm-field">
+                  <span class="crm-field__label">Type <span class="crm-field__req">*</span></span>
+                  <select class="crm-field__input">
+                    <option value="" selected disabled>Select Type</option>
+                    <option>Banner</option>
+                    <option>Card</option>
+                    <option>Text</option>
+                  </select>
+                </label>
+                <label class="crm-field crm-field--full">
+                  <span class="crm-field__label">Description</span>
+                  <input class="crm-field__input" type="text" placeholder="Enter description" />
+                </label>
+              </div>
+            </div>
+
+            <div class="crm-modal__divider"></div>
+
+            <div class="crm-modal__section">
+              <div class="crm-modal__section-label">Media</div>
+              <div class="crm-upload">
+                <div class="crm-upload__label">
+                  Image <span class="crm-upload__info" title="JPG/PNG only" aria-label="JPG/PNG only">i</span>
+                </div>
+                <div class="crm-upload__drop">
+                  <div class="crm-upload__icon" aria-hidden="true"><img src="${modalImg}"/></div>
+                  <div class="crm-upload__text">
+                    <div><span class="crm-upload__muted">Drop image here or</span> <button type="button" class="crm-upload__link">upload file</button></div>
+                    <div class="crm-upload__hint">Accepted: JPG/PNG</div>
+                  </div>
+                </div>
+                <div class="crm-upload__or">or</div>
+                <input class="crm-field__input" type="url" placeholder="Paste image URL" />
+              </div>
+            </div>
+
+            <div class="crm-modal__divider"></div>
+
+            <div class="crm-modal__footer">
+              <div class="crm-modal__status">
+                <div class="crm-modal__section-label" style="margin:0;">Status</div>
+                <div class="crm-modal__status-row">
+                  <div class="crm-modal__status-text">Active</div>
+                  <label class="crm-switch">
+                    <input class="crm-switch__input" type="checkbox" checked />
+                    <span class="crm-switch__track" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="crm-modal__actions">
+                <button type="button" class="crm-btn crm-btn--link" data-modal-close>Cancel</button>
+                <button type="button" class="crm-btn crm-btn--disabled" aria-disabled="true">Save Content</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   `;
@@ -234,6 +311,52 @@ const isSettings = currentRoute === "/settings";
   return {
     mount(target) {
       target.innerHTML = markup;
+
+      const root = target.querySelector(".dashboard-layout");
+      if (!root) return;
+
+      const modal = root.querySelector("[data-create-content-modal]");
+      const createBtn = root.querySelector("[data-create-content-btn]");
+      let lastFocusedEl = null;
+  
+      const setModalOpen = (open) => {
+        if (!modal) return;
+        modal.classList.toggle("is-open", open);
+        modal.setAttribute("aria-hidden", open ? "false" : "true");
+        document.documentElement.classList.toggle("has-modal", open);
+        if (open) {
+          lastFocusedEl = document.activeElement;
+          const firstField = modal.querySelector("input, select, button");
+          if (firstField) firstField.focus();
+        } else if (lastFocusedEl && typeof lastFocusedEl.focus === "function") {
+          lastFocusedEl.focus();
+        }
+      };
+  
+      const onKeyDown = (event) => {
+        if (event.key !== "Escape") return;
+        if (!modal || !modal.classList.contains("is-open")) return;
+        event.preventDefault();
+        setModalOpen(false);
+      };
+
+      const onRootClick = (event) => {
+        const modalClose = event.target.closest?.("[data-modal-close]");
+        if (modalClose && modal && modal.classList.contains("is-open")) {
+          event.preventDefault();
+          setModalOpen(false);
+          return;
+        }
+
+        const createCampaign = event.target.closest?.("[data-create-campaign-btn]");
+        if (createCampaign) {
+          event.preventDefault();
+          setModalOpen(true);
+        }
+      };
+
+      root.addEventListener("click", onRootClick);
+      document.addEventListener("keydown", onKeyDown);
     },
   };
 }

@@ -1,0 +1,1 @@
+import{D as t}from"./DashboardPage-CY3wjioL.js";function o(){import.meta.url,import("_").catch(()=>1),async function*(){}().next()}const a=document.getElementById("app");t().mount(a);export{o as __vite_legacy_guard};
