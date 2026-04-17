@@ -117,7 +117,7 @@ export function ReportsPage({ currentRoute = "/reports" } = {}) {
           </div>
 
           <div class="campaign-toolbar__actions">
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-filter-btn aria-haspopup="dialog" aria-expanded="false">
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
@@ -125,6 +125,18 @@ export function ReportsPage({ currentRoute = "/reports" } = {}) {
               <span class="ghost-btn__icon" aria-hidden="true">${exportIcon()}</span>
               Export
             </button>
+
+            <div class="crm-filter" data-filter-popover aria-hidden="true">
+              <div class="crm-filter__title">Filter</div>
+              <label class="crm-filter__field">
+                <span class="crm-filter__label">Report name starts with</span>
+                <input class="crm-filter__input" type="text" inputmode="text" placeholder="e.g. C" maxlength="20" />
+              </label>
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-filter-reset>All</button>
+                <button type="button" class="crm-filter__close" data-filter-close>Close</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -167,6 +179,86 @@ export function ReportsPage({ currentRoute = "/reports" } = {}) {
   return {
     mount(target) {
       target.innerHTML = markup;
+
+      const root = target.querySelector(".dashboard-layout");
+      if (!root) return;
+
+      const filterBtn = root.querySelector("[data-filter-btn]");
+      const filterPopover = root.querySelector("[data-filter-popover]");
+      const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
+
+      const applyPrefixFilter = (prefixRaw) => {
+        const prefix = String(prefixRaw ?? "").trim().toLowerCase();
+        root.querySelectorAll("tbody tr[data-report-name]").forEach((tr) => {
+          const name = String(tr.getAttribute("data-report-name") ?? "").toLowerCase();
+          const show = prefix === "" ? true : name.startsWith(prefix);
+          tr.toggleAttribute("hidden", !show);
+        });
+      };
+
+      const setFilterOpen = (open) => {
+        if (!filterBtn || !filterPopover) return;
+        filterPopover.classList.toggle("is-open", open);
+        filterPopover.setAttribute("aria-hidden", open ? "false" : "true");
+        filterBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open && filterInput) {
+          filterInput.focus();
+          filterInput.select?.();
+        }
+      };
+
+      const onFilterInput = () => {
+        applyPrefixFilter(filterInput?.value ?? "");
+      };
+      filterInput?.addEventListener("input", onFilterInput);
+
+      const onRootClick = (event) => {
+        const filterClose = event.target.closest?.("[data-filter-close]");
+        if (filterClose && filterPopover?.classList?.contains("is-open")) {
+          event.preventDefault();
+          setFilterOpen(false);
+          return;
+        }
+
+        const filterResetClick = event.target.closest?.("[data-filter-reset]");
+        if (filterResetClick) {
+          event.preventDefault();
+          if (filterInput) filterInput.value = "";
+          applyPrefixFilter("");
+          setFilterOpen(false);
+          return;
+        }
+
+        const filterToggle = event.target.closest?.("[data-filter-btn]");
+        if (filterToggle) {
+          event.preventDefault();
+          setFilterOpen(!filterPopover?.classList?.contains("is-open"));
+        }
+      };
+      root.addEventListener("click", onRootClick);
+
+      const onKeyDown = (event) => {
+        if (event.key !== "Escape") return;
+        if (!filterPopover?.classList?.contains("is-open")) return;
+        event.preventDefault();
+        setFilterOpen(false);
+      };
+      document.addEventListener("keydown", onKeyDown);
+
+      const onDocumentClickForFilter = (event) => {
+        if (!target.contains(event.target)) return;
+        if (event.target.closest?.("[data-filter-btn]")) return;
+        if (event.target.closest?.("[data-filter-popover]")) return;
+        setFilterOpen(false);
+      };
+      document.addEventListener("click", onDocumentClickForFilter, true);
+
+      this.unmount = () => {
+        root.removeEventListener("click", onRootClick);
+        filterInput?.removeEventListener("input", onFilterInput);
+        document.removeEventListener("keydown", onKeyDown);
+        document.removeEventListener("click", onDocumentClickForFilter, true);
+      };
     },
     unmount() {},
   };
@@ -178,7 +270,7 @@ function row(name, description, lastGenerated) {
 
 function renderRow(item) {
   return `
-    <tr>
+    <tr data-report-name="${escapeHtml(item.name)}">
       <td>${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.description)}</td>
       <td>${escapeHtml(item.lastGenerated)}</td>

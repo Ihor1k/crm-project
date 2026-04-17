@@ -136,7 +136,7 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
           </div>
 
           <div class="campaign-toolbar__actions">
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-filter-btn aria-haspopup="dialog" aria-expanded="false">
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
@@ -144,6 +144,18 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
               <span class="ghost-btn__icon" aria-hidden="true">${exportIcon()}</span>
               Export
             </button>
+
+            <div class="crm-filter" data-filter-popover aria-hidden="true">
+              <div class="crm-filter__title">Filter</div>
+              <label class="crm-filter__field">
+                <span class="crm-filter__label">Content name starts with</span>
+                <input class="crm-filter__input" type="text" inputmode="text" placeholder="e.g. H" maxlength="20" />
+              </label>
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-filter-reset>All</button>
+                <button type="button" class="crm-filter__close" data-filter-close>Close</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -340,6 +352,10 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     const createBtn = root.querySelector("[data-create-content-btn]");
     let lastFocusedEl = null;
 
+    const filterBtn = root.querySelector("[data-filter-btn]");
+    const filterPopover = root.querySelector("[data-filter-popover]");
+    const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
+
     const setModalOpen = (open) => {
       if (!modal) return;
       modal.classList.toggle("is-open", open);
@@ -354,7 +370,32 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
       }
     };
 
+    const applyPrefixFilter = (prefixRaw) => {
+      const prefix = String(prefixRaw ?? "").trim().toLowerCase();
+      root.querySelectorAll("tbody tr[data-content-name]").forEach((tr) => {
+        const name = String(tr.getAttribute("data-content-name") ?? "").toLowerCase();
+        const show = prefix === "" ? true : name.startsWith(prefix);
+        tr.toggleAttribute("hidden", !show);
+      });
+    };
+
+    const setFilterOpen = (open) => {
+      if (!filterBtn || !filterPopover) return;
+      filterPopover.classList.toggle("is-open", open);
+      filterPopover.setAttribute("aria-hidden", open ? "false" : "true");
+      filterBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && filterInput) {
+        filterInput.focus();
+        filterInput.select?.();
+      }
+    };
+
     const onKeyDown = (event) => {
+      if (event.key === "Escape" && filterPopover?.classList?.contains("is-open")) {
+        event.preventDefault();
+        setFilterOpen(false);
+        return;
+      }
       if (event.key !== "Escape") return;
       if (!modal || !modal.classList.contains("is-open")) return;
       event.preventDefault();
@@ -373,6 +414,29 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
       if (modalClose && modal && modal.classList.contains("is-open")) {
         event.preventDefault();
         setModalOpen(false);
+        return;
+      }
+
+      const filterClose = event.target.closest?.("[data-filter-close]");
+      if (filterClose && filterPopover?.classList?.contains("is-open")) {
+        event.preventDefault();
+        setFilterOpen(false);
+        return;
+      }
+
+      const filterResetClick = event.target.closest?.("[data-filter-reset]");
+      if (filterResetClick) {
+        event.preventDefault();
+        if (filterInput) filterInput.value = "";
+        applyPrefixFilter("");
+        setFilterOpen(false);
+        return;
+      }
+
+      const filterToggle = event.target.closest?.("[data-filter-btn]");
+      if (filterToggle) {
+        event.preventDefault();
+        setFilterOpen(!filterPopover?.classList?.contains("is-open"));
         return;
       }
 
@@ -413,6 +477,19 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("click", onDocumentClickCapture, true);
 
+    const onFilterInput = () => {
+      applyPrefixFilter(filterInput?.value ?? "");
+    };
+    filterInput?.addEventListener("input", onFilterInput);
+
+    const onDocumentClickForFilter = (event) => {
+      if (!target.contains(event.target)) return;
+      if (event.target.closest?.("[data-filter-btn]")) return;
+      if (event.target.closest?.("[data-filter-popover]")) return;
+      setFilterOpen(false);
+    };
+    document.addEventListener("click", onDocumentClickForFilter, true);
+
     cleanup = () => {
       root.removeEventListener("click", onRootClick);
       root.removeEventListener("mouseover", onThumbMouseOver);
@@ -420,6 +497,8 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
       root.removeEventListener("mouseout", onThumbMouseOut);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("click", onDocumentClickCapture, true);
+      filterInput?.removeEventListener("input", onFilterInput);
+      document.removeEventListener("click", onDocumentClickForFilter, true);
       preview.remove();
       document.documentElement.classList.remove("has-modal");
       cleanup = null;
@@ -441,7 +520,7 @@ function row(name, type, status, thumb) {
 function renderRow(item) {
   const statusKey = item.status.toLowerCase() === "active" ? "running" : "archived";
   return `
-    <tr>
+    <tr data-content-name="${escapeHtmlAttr(item.name)}">
       <td>
         <img
           src="${escapeHtmlAttr(item.thumb)}"
@@ -495,9 +574,9 @@ function searchIcon() {
 }
 
 function filterIcon() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="14" viewBox="0 0 13 14" fill="none">
-  <path d="M10.5563 0C10.9944 0.000513872 11.423 0.128005 11.7907 0.366211C12.1583 0.604429 12.4501 0.943185 12.6296 1.34277C12.809 1.74248 12.8687 2.18603 12.8024 2.61914C12.7361 3.05214 12.5462 3.45646 12.2555 3.78418L8.16472 8.38867V13.417C8.16464 13.5716 8.10315 13.7198 7.99383 13.8291C7.88446 13.9384 7.73634 14 7.58172 14C7.45571 14 7.33299 13.9593 7.23211 13.8838L4.89812 12.1338C4.82568 12.0795 4.76675 12.0087 4.72625 11.9277C4.6858 11.8468 4.66478 11.7574 4.66472 11.667V8.38867L0.571951 3.78418C0.28137 3.45632 0.0921444 3.05125 0.026053 2.61816C-0.0400383 2.18499 0.0202267 1.74146 0.199881 1.3418C0.379551 0.942318 0.671035 0.603263 1.03875 0.365234C1.4065 0.127221 1.83507 0.000316821 2.27312 0H10.5563Z" fill="#3A3A3A"/>
-  </svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+  <path d="M11.1413 0C11.5794 0.000513872 12.008 0.128005 12.3757 0.366211C12.7433 0.604429 13.0351 0.943185 13.2145 1.34277C13.394 1.74248 13.4536 2.18603 13.3874 2.61914C13.3211 3.05214 13.1312 3.45646 12.8405 3.78418L8.74969 8.38867V13.417C8.7496 13.5716 8.68811 13.7198 8.57879 13.8291C8.46942 13.9384 8.3213 14 8.16668 14C8.04067 14 7.91795 13.9593 7.81707 13.8838L5.48308 12.1338C5.41064 12.0795 5.35171 12.0087 5.31121 11.9277C5.27076 11.8468 5.24974 11.7574 5.24969 11.667V8.38867L1.15691 3.78418C0.866331 3.45632 0.677105 3.05125 0.611014 2.61816C0.544923 2.18499 0.605188 1.74146 0.784842 1.3418C0.964512 0.942318 1.256 0.603263 1.62371 0.365234C1.99146 0.127221 2.42003 0.000316821 2.85808 0H11.1413ZM2.85808 1.16699C2.64493 1.16736 2.43641 1.22886 2.2575 1.34473C2.07852 1.46065 1.9368 1.62585 1.8493 1.82031C1.76182 2.01475 1.73239 2.2306 1.76433 2.44141C1.79632 2.652 1.88799 2.84912 2.02898 3.00879L6.26922 7.7793C6.36396 7.88607 6.41672 8.02424 6.41668 8.16699V11.375L7.58367 12.25V8.16699C7.58379 8.02417 7.63618 7.88599 7.73113 7.7793L11.9704 3.00977C12.1118 2.84998 12.204 2.65233 12.236 2.44141C12.268 2.2305 12.2386 2.01486 12.1511 1.82031C12.0635 1.6258 11.9219 1.46066 11.7428 1.34473C11.5638 1.22878 11.3546 1.16722 11.1413 1.16699H2.85808Z" fill="#3A3A3A"/>
+</svg>`;
 }
 
 function exportIcon() {

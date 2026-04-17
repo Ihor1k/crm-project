@@ -143,7 +143,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
           </div>
 
           <div class="campaign-toolbar__actions">
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-filter-btn aria-haspopup="dialog" aria-expanded="false">
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
@@ -151,6 +151,18 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
               <span class="ghost-btn__icon" aria-hidden="true">${exportIcon()}</span>
               Export
             </button>
+
+            <div class="crm-filter" data-filter-popover aria-hidden="true">
+              <div class="crm-filter__title">Filter</div>
+              <label class="crm-filter__field">
+                <span class="crm-filter__label">Campaign name starts with</span>
+                <input class="crm-filter__input" type="text" inputmode="text" placeholder="e.g. S" maxlength="20" />
+              </label>
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-filter-reset>All</button>
+                <button type="button" class="crm-filter__close" data-filter-close>Close</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -303,6 +315,11 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     const createBtn = root.querySelector("[data-create-campaign-btn]");
     let lastFocusedEl = null;
 
+    const filterBtn = root.querySelector("[data-filter-btn]");
+    const filterPopover = root.querySelector("[data-filter-popover]");
+    const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
+    const filterReset = filterPopover?.querySelector("[data-filter-reset]") ?? null;
+
     const setModalOpen = (open) => {
       if (!modal) return;
       modal.classList.toggle("is-open", open);
@@ -317,7 +334,32 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       }
     };
 
+    const applyPrefixFilter = (prefixRaw) => {
+      const prefix = String(prefixRaw ?? "").trim().toLowerCase();
+      root.querySelectorAll("tbody tr[data-campaign-name]").forEach((tr) => {
+        const name = String(tr.getAttribute("data-campaign-name") ?? "").toLowerCase();
+        const show = prefix === "" ? true : name.startsWith(prefix);
+        tr.toggleAttribute("hidden", !show);
+      });
+    };
+
+    const setFilterOpen = (open) => {
+      if (!filterBtn || !filterPopover) return;
+      filterPopover.classList.toggle("is-open", open);
+      filterPopover.setAttribute("aria-hidden", open ? "false" : "true");
+      filterBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && filterInput) {
+        filterInput.focus();
+        filterInput.select?.();
+      }
+    };
+
     const onKeyDown = (event) => {
+      if (event.key === "Escape" && filterPopover?.classList?.contains("is-open")) {
+        event.preventDefault();
+        setFilterOpen(false);
+        return;
+      }
       if (event.key !== "Escape") return;
       if (!modal || !modal.classList.contains("is-open")) return;
       event.preventDefault();
@@ -341,6 +383,29 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       if (modalClose && modal && modal.classList.contains("is-open")) {
         event.preventDefault();
         setModalOpen(false);
+        return;
+      }
+
+      const filterClose = event.target.closest?.("[data-filter-close]");
+      if (filterClose && filterPopover?.classList?.contains("is-open")) {
+        event.preventDefault();
+        setFilterOpen(false);
+        return;
+      }
+
+      const filterResetClick = event.target.closest?.("[data-filter-reset]");
+      if (filterResetClick) {
+        event.preventDefault();
+        if (filterInput) filterInput.value = "";
+        applyPrefixFilter("");
+        setFilterOpen(false);
+        return;
+      }
+
+      const filterToggle = event.target.closest?.("[data-filter-btn]");
+      if (filterToggle) {
+        event.preventDefault();
+        setFilterOpen(!filterPopover?.classList?.contains("is-open"));
         return;
       }
 
@@ -370,6 +435,19 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     root.addEventListener("click", onRootClick);
     document.addEventListener("keydown", onKeyDown);
 
+    const onFilterInput = () => {
+      applyPrefixFilter(filterInput?.value ?? "");
+    };
+    filterInput?.addEventListener("input", onFilterInput);
+
+    const onDocumentClickForFilter = (event) => {
+      if (!target.contains(event.target)) return;
+      if (event.target.closest?.("[data-filter-btn]")) return;
+      if (event.target.closest?.("[data-filter-popover]")) return;
+      setFilterOpen(false);
+    };
+    document.addEventListener("click", onDocumentClickForFilter, true);
+
     const onDocumentClickCapture = (event) => {
       if (!target.contains(event.target)) return;
       if (event.target.closest("[data-row-dots]")) return;
@@ -386,6 +464,8 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     cleanup = () => {
       root.removeEventListener("click", onRootClick);
       document.removeEventListener("keydown", onKeyDown);
+      filterInput?.removeEventListener("input", onFilterInput);
+      document.removeEventListener("click", onDocumentClickForFilter, true);
       document.documentElement.classList.remove("has-modal");
       document.removeEventListener("click", onDocumentClickCapture, { capture: true });
       cleanup = null;
@@ -407,7 +487,7 @@ function row(name, id, status, geo, conv, created, end) {
 function renderRow(item) {
   const rowId = item.id;
   return `
-    <tr>
+    <tr data-campaign-name="${escapeHtml(item.name)}">
       <td>${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.id)}</td>
       <td>${statusBadge(item.status)}</td>
