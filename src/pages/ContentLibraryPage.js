@@ -174,7 +174,13 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
                 </tr>
               </thead>
               <tbody>
-                ${rows.map(renderRow).join("")}
+                ${(() => {
+                  const stored = loadContentItems();
+                  if (stored.length > 0) return stored.map(renderRow).join("");
+                  // Seed localStorage once so Launch Calendar + persistence work.
+                  saveContentItems(rows.map((r) => ({ ...r, updatedAt: Date.now() })));
+                  return rows.map(renderRow).join("");
+                })()}
               </tbody>
             </table>
             <div class="table-pagination" aria-label="Pagination">

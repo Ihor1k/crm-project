@@ -211,7 +211,61 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
                 </tr>
               </thead>
               <tbody>
-                ${rows.map(renderRow).join("")}
+                ${(() => {
+                  const isoToDmy = (iso) => {
+                    if (!iso) return "—";
+                    const parts = String(iso).split("-");
+                    if (parts.length !== 3) return "—";
+                    const [y, m, d] = parts;
+                    if (!y || !m || !d) return "—";
+                    return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
+                  };
+
+                  const stored = loadCampaigns();
+                  if (stored.length > 0) {
+                    return stored
+                      .map((c) =>
+                        renderRow(
+                          row(
+                            c.campaignName || "-",
+                            c.id || "-",
+                            c.status || "Draft",
+                            c.geo || "—",
+                            c.conv || "—",
+                            isoToDmy(c.startDate),
+                            isoToDmy(c.endDate),
+                          ),
+                        ),
+                      )
+                      .join("");
+                  }
+
+                  // Seed localStorage once so Launch Calendar + persistence work.
+                  const parseDmy = (s) => {
+                    const m = String(s || "").trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+                    if (!m) return "";
+                    const [, dd, mm, yyyy] = m;
+                    return `${yyyy}-${mm}-${dd}`;
+                  };
+                  const seeded = rows.map((r) => ({
+                    id: r.id,
+                    campaignName: r.name,
+                    status: r.status,
+                    geo: r.geo,
+                    conv: r.conv,
+                    channel: "",
+                    description: "",
+                    audienceSegment: "",
+                    startDate: parseDmy(r.created),
+                    endDate: parseDmy(r.end),
+                    linkedContent: "",
+                    contentType: "",
+                    purpose: "",
+                    history: [],
+                  }));
+                  saveCampaigns(seeded);
+                  return rows.map(renderRow).join("");
+                })()}
               </tbody>
             </table>
           </div>
@@ -865,6 +919,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
             text: `was ${String(next).toLowerCase()}`,
           });
           renderOverview();
+          upsertCampaign(state.savedCampaign);
         }
         setStatusPopupOpen(false);
         return;

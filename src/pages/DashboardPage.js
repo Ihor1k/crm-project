@@ -7,6 +7,7 @@ import {
 } from "../components/campaignDatePicker.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
+import { loadCampaigns, saveCampaigns, upsertCampaign, loadContentItems } from "../utils/crmStore.js";
 
 
 const statIcons = {
@@ -25,10 +26,12 @@ const statIcons = {
 };
 
 export function DashboardPage({ currentRoute = "/dashboard" } = {}) {
+  const storedCampaignCount = loadCampaigns().length;
+  const storedContentCount = loadContentItems().length;
   const stats = [
-    { value: 32, label: "Currently Running Campaigns", icon: statIcons.megaphone },
+    { value: storedCampaignCount || 32, label: "Currently Running Campaigns", icon: statIcons.megaphone },
     { value: 6, label: "Scheduled Launches", icon: statIcons.clock },
-    { value: 123, label: "Available Content Assets", icon: statIcons.document },
+    { value: storedContentCount || 123, label: "Available Content Assets", icon: statIcons.document },
     { value: 4, label: "Running Experiments", icon: statIcons.flask },
   ];
 
@@ -44,17 +47,38 @@ export function DashboardPage({ currentRoute = "/dashboard" } = {}) {
     { time: "Today, 9:20", name: "Weekly report", text: "was generated" },
   ];
 
-  const campaigns = [
-    ["Spring Promotion", "Web", "121", "01.02.2026", "12.02.2026"],
-    ["March Boost Promo", "Email", "23", "01.03.2026", "30.03.2026"],
-    ["New Season Launch", "Web", "325", "01.03.2026", "15.04.2026"],
-    ["Flash Promo Week", "Ads", "86", "01.03.2026", "17.03.2026"],
-    ["Flash Promo Week", "Ads", "86", "01.03.2026", "17.03.2026"],
-    ["Flash Promo Week", "Ads", "86", "01.03.2026", "17.03.2026"],
-    ["Flash Promo Week", "Ads", "86", "01.03.2026", "17.03.2026"],
-    ["Flash Promo Week", "Ads", "86", "01.03.2026", "17.03.2026"],
-    ["Flash Promo Week", "Ads", "86", "01.03.2026", "17.03.2026"],
-  ];
+  const seededDashboardCampaigns = () => {
+    const displayToIso = (v) => {
+      const s = String(v || "").trim();
+      const m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (!m) return "";
+      return `${m[3]}-${m[2]}-${m[1]}`;
+    };
+
+    const base = [
+      ["Spring Promotion", "Web", "121", "01.02.2026", "12.02.2026"],
+      ["March Boost Promo", "Email", "23", "01.03.2026", "30.03.2026"],
+      ["New Season Launch", "Web", "325", "01.03.2026", "15.04.2026"],
+      ["Flash Promo Week", "Ads", "86", "01.03.2026", "17.03.2026"],
+    ];
+
+    return base.map((r, idx) => ({
+      id: `CMP-SEED-${idx + 1}`,
+      campaignName: r[0],
+      channel: r[1],
+      leads: r[2],
+      startDate: displayToIso(r[3]),
+      endDate: displayToIso(r[4]),
+      description: "",
+      geo: "",
+      audienceSegment: "",
+      linkedContent: "",
+      contentType: "",
+      purpose: "",
+      status: "Active",
+      history: [],
+    }));
+  };
 
 
 
@@ -215,19 +239,25 @@ const isSettings = currentRoute === "/settings";
                   </tr>
                 </thead>
                 <tbody>
-                  ${campaigns
-                    .map(
-                      (row) => `
-                    <tr>
-                      <td>${escapeHtml(row[0])}</td>
-                      <td>${escapeHtml(row[1])}</td>
-                      <td>${escapeHtml(row[2])}</td>
-                      <td>${escapeHtml(row[3])}</td>
-                      <td>${escapeHtml(row[4])}</td>
-                    </tr>
-                  `,
-                    )
-                    .join("")}
+                  ${(() => {
+                    const stored = loadCampaigns();
+                    const list = stored.length ? stored : seededDashboardCampaigns();
+                    if (!stored.length) saveCampaigns(list);
+                    return list
+                      .slice(0, 9)
+                      .map(
+                        (c) => `
+                      <tr>
+                        <td>${escapeHtml(c.campaignName || "-")}</td>
+                        <td>${escapeHtml(c.channel || "-")}</td>
+                        <td>${escapeHtml(c.leads ?? "—")}</td>
+                        <td>${escapeHtml(formatIsoToDisplay(c.startDate) || "—")}</td>
+                        <td>${escapeHtml(formatIsoToDisplay(c.endDate) || "—")}</td>
+                      </tr>
+                    `,
+                      )
+                      .join("");
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -663,13 +693,6 @@ const isSettings = currentRoute === "/settings";
         );
       };
 
-      const formatIsoToDisplay = (iso) => {
-        if (!iso) return "";
-        const [y, m, d] = iso.split("-").map((n) => Number(n));
-        if (!y || !m || !d) return "";
-        return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
-      };
-
       const formatNow = () => {
         const d = new Date();
         const hh = String(d.getHours()).padStart(2, "0");
@@ -878,6 +901,7 @@ const isSettings = currentRoute === "/settings";
               text: `was ${String(next).toLowerCase()}`,
             });
             renderOverview();
+            upsertCampaign(state.savedCampaign);
           }
           setStatusPopupOpen(false);
           return;
@@ -907,9 +931,12 @@ const isSettings = currentRoute === "/settings";
             linkedContent: getFieldValue("linkedContent"),
             contentType: getFieldValue("contentType"),
             purpose: getFieldValue("purpose"),
+            leads: "—",
             status: "Draft",
             history: [],
           };
+
+          upsertCampaign(state.savedCampaign);
 
           appendDashboardCampaignRow({
             name: getFieldValue("campaignName"),
@@ -986,6 +1013,13 @@ function stripBase(path) {
 
   const rest = path.slice(baseNoSlash.length);
   return rest === "" ? "/" : rest;
+}
+
+function formatIsoToDisplay(iso) {
+  if (!iso) return "";
+  const [y, m, d] = String(iso).split("-").map((n) => Number(n));
+  if (!y || !m || !d) return "";
+  return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
 }
 
 function changeStatusIcon() {
