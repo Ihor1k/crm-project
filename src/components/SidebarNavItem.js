@@ -17,7 +17,7 @@ export function SidebarNavItem({ label, to, icon = "circle", active }) {
   if (typeof normalizedTo === "string" && normalizedTo.length > 0) {
     return `
       <li>
-        <a data-navigo href="${escapeHtmlAttr(normalizedTo)}" class="${itemClass}">
+        <a data-navigo href="#${escapeHtmlAttr(normalizedTo)}" class="${itemClass}">
           <span class="sidebar-nav__icon">${iconMarkup(icon)}</span>
           <span class="sidebar-nav-text">${safeLabel}</span>
         </a>
