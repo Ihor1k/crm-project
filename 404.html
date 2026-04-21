@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting…</title>
+    <meta http-equiv="refresh" content="0; url=./" />
+    <script>
+      // GitHub Pages SPA fallback:
+      // When a user opens /repo/some/route directly, Pages returns 404.html.
+      // Redirect into hash-routing so the SPA router can render the correct view.
+      (function () {
+        var l = window.location;
+        var parts = l.pathname.split("/").filter(Boolean);
+        // For https://user.github.io/repo/... the base is "/repo"
+        var base = parts.length ? "/" + parts[0] : "";
+        var rest = parts.slice(1).join("/");
+        var target = l.origin + base + "/#/" + rest + (l.search || "");
+        l.replace(target);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
+
