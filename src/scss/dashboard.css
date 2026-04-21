@@ -167,6 +167,7 @@ line-height: 22px; /* 137.5% */
   font-size: 0.95rem;
   padding: 14px 20px;
   cursor: pointer;
+  width: 100%;
 }
 
 /* Modal (Create Content) */
@@ -205,7 +206,7 @@ line-height: 22px; /* 137.5% */
   top: 0;
   right: 0;
   height: 100vh;
-  width: 40%;
+  width: 50%;
   /* max-width: 720px;
   min-width: 520px; */
   background: #fff;
@@ -213,7 +214,8 @@ line-height: 22px; /* 137.5% */
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.14);
   border: 1px solid rgba(0, 0, 0, 0.06);
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -291,11 +293,6 @@ line-height: 22px; /* 137.5% */
   flex: 0 0 auto;
 }
 
-/* Allow drawer content to scroll */
-.crm-modal__dialog {
-  overflow-y: auto;
-}
-
 .crm-modal.is-open .crm-modal__dialog {
   transform: translateX(0);
 }
@@ -304,6 +301,31 @@ line-height: 22px; /* 137.5% */
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px 14px;
+}
+
+.crm-hint {
+  margin-top: 14px;
+  border-radius: 12px;
+  background: rgba(211, 250, 189, 0.35);
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 89, 27, 0.12);
+}
+
+.crm-hint__title {
+  color: #00591b;
+  font-family: "DM Sans";
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  margin-bottom: 4px;
+}
+
+.crm-hint__text {
+  color: rgba(27, 27, 27, 0.75);
+  font-family: "DM Sans";
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
 }
 
 .crm-field {
@@ -343,6 +365,53 @@ line-height: 22px; /* 137.5% */
   color: #c6c6c6;
 }
 
+.crm-field__input.is-invalid,
+.crm-datepicker__trigger.is-invalid {
+  border-color: rgba(217, 56, 47, 0.55);
+  box-shadow: 0 0 0 3px rgba(217, 56, 47, 0.08);
+}
+
+.crm-field__input.is-invalid:focus,
+.crm-datepicker__trigger.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(217, 56, 47, 0.14);
+}
+
+/* Dashboard skeleton loading */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #f1f2f3;
+  border-radius: 14px;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: skeleton-shimmer 1.1s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+}
+
+.skeleton-line.sm {
+  height: 10px;
+}
+
+.skeleton-box {
+  border-radius: 18px;
+}
+
 .crm-upload {
   display: grid;
   gap: 10px;
@@ -378,6 +447,57 @@ line-height: 22px; /* 137.5% */
   align-items: center;
   justify-content: center;
   gap: 12px;
+}
+
+.crm-upload__icon img {
+  width: 56px;
+  height: 44px;
+  /* border-radius: 12px;
+  border: 1px solid #eceef0;
+  background: #f7f7f7; */
+  object-fit: cover;
+  display: block;
+}
+
+.crm-upload__thumb {
+  width: 50%;
+  height: 100%;
+  border-radius: 12px;
+  border: 1px solid #eceef0;
+  background: #fff;
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.crm-upload__thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.crm-upload__thumb-del {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: rgba(255, 255, 255, 0.75);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 140ms ease;
+  color: #d9382f;
+}
+
+.crm-upload__thumb:hover .crm-upload__thumb-del {
+  opacity: 1;
+}
+
+.crm-upload__thumb-del svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 /* .crm-upload__icon {
@@ -434,11 +554,12 @@ line-height: 22px; /* 137.5% */
 
 .crm-modal__footer {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
   padding: 16px 22px 18px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  flex-direction: column;
+  /* border-top: 1px solid rgba(0, 0, 0, 0.06); */
 }
 
 .crm-modal__status {
@@ -508,6 +629,8 @@ line-height: 22px; /* 137.5% */
 .crm-modal__actions {
   display: inline-flex;
   gap: 10px;
+  width: 100%;
+  justify-content: space-between;
 }
 
 .crm-btn {
@@ -517,6 +640,25 @@ line-height: 22px; /* 137.5% */
   font-family: "DM Sans";
   font-size: 14px;
   cursor: pointer;
+}
+
+.crm-btn--primary {
+  background: #141518;
+  color: #fff;
+}
+
+.crm-btn--primary:hover {
+  filter: brightness(1.05);
+}
+
+.crm-btn--outline {
+  background: #fff;
+  color: #1b1b1b;
+  border-color: #c6c6c6;
+}
+
+.crm-btn--outline:hover {
+  background: #f5f6f7;
 }
 
 .crm-btn--disabled {
@@ -537,6 +679,650 @@ line-height: 22px; /* 137.5% */
 .crm-btn--link:hover {
   color: rgba(27, 27, 27, 0.55);
 }
+
+/* Campaign overview drawer */
+.crm-tabs {
+  display: inline-flex;
+  gap: 10px;
+  padding: 10px 0 0;
+}
+
+.crm-tab {
+  border: 0;
+  background: transparent;
+  font-family: "DM Sans";
+  font-size: 13px;
+  color: #8a8a8a;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.crm-tab.is-active {
+  background: #d6f5d0;
+  color: #00591b;
+}
+
+.crm-overview__section-label {
+  color: #00591b;
+  font-family: "Roboto Condensed";
+  font-size: 12px;
+  letter-spacing: 0.28px;
+  text-transform: uppercase;
+  margin: 8px 0 10px;
+}
+
+.crm-overview__divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  margin: 16px 0 0;
+}
+
+.crm-overview__summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.crm-overview__grid {
+  display: grid;
+  gap: 8px;
+}
+
+.crm-overview__row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px;
+  font-family: "DM Sans";
+  font-size: 13px;
+  color: #8a8a8a;
+}
+
+.crm-overview__row b {
+  color: #1b1b1b;
+  font-weight: 500;
+}
+
+.crm-overview__change {
+  border: 0;
+  background: transparent;
+  color: #00591b;
+  font-family: "DM Sans";
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.crm-overview__change:hover {
+  background: #f5f6f7;
+}
+
+.crm-overview__text {
+  font-family: "DM Sans";
+  font-size: 13px;
+  color: #1b1b1b;
+  line-height: 1.45;
+}
+
+.crm-overview__muted {
+  font-family: "DM Sans";
+  font-size: 13px;
+  color: rgba(27, 27, 27, 0.35);
+}
+
+.crm-overview__linked {
+  display: grid;
+  gap: 8px;
+}
+
+.crm-overview__footer {
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.crm-modal__dialog.crm-overview {
+  overflow: hidden;
+}
+
+.crm-overview__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.crm-overview__footer-actions {
+  display: inline-flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.crm-overview__ghost {
+  color: rgba(27, 27, 27, 0.35);
+}
+
+/* Activity tab */
+.crm-activity-card {
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+  padding: 14px 14px 16px;
+}
+
+.crm-activity-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.crm-activity-card__title {
+  font-family: "DM Sans";
+  font-size: 14px;
+  font-weight: 600;
+  color: #1b1b1b;
+}
+
+.crm-activity-card__select {
+  font-family: "DM Sans";
+  font-size: 12px;
+  color: rgba(27, 27, 27, 0.6);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crm-activity-card__caret {
+  color: rgba(27, 27, 27, 0.35);
+}
+
+.crm-activity-card__meta {
+  margin-top: 12px;
+  font-family: "DM Sans";
+  font-size: 12px;
+  color: rgba(27, 27, 27, 0.6);
+}
+
+.crm-activity-card__meta b {
+  color: #1b1b1b;
+  font-weight: 600;
+}
+
+.crm-activity-legend {
+  margin-top: 8px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: "DM Sans";
+  font-size: 11px;
+  color: rgba(27, 27, 27, 0.45);
+}
+
+.crm-activity-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crm-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.crm-dot--last {
+  background: #d6f5d0;
+}
+
+.crm-dot--this {
+  background: #00591b;
+}
+
+.crm-dot--proj {
+  background: #eceff2;
+}
+
+.crm-activity-bars {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  align-items: end;
+  height: 220px;
+}
+
+.crm-activity-bars__stack {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  height: 190px;
+}
+
+.crm-bar {
+  width: 18px;
+  border-radius: 4px;
+}
+
+.crm-bar--last {
+  background: #d6f5d0;
+}
+
+.crm-bar--this {
+  background: #00591b;
+}
+
+.crm-bar--proj {
+  background: #eceff2;
+}
+
+.crm-activity-bars__day {
+  margin-top: 8px;
+  text-align: center;
+  font-family: "DM Sans";
+  font-size: 11px;
+  color: rgba(27, 27, 27, 0.35);
+}
+
+.crm-history {
+  display: grid;
+  gap: 10px;
+}
+
+.crm-history__item {
+  display: grid;
+  gap: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.crm-history__time {
+  font-family: "DM Sans";
+  font-size: 11px;
+  color: rgba(27, 27, 27, 0.45);
+}
+
+.crm-history__text {
+  font-family: "DM Sans";
+  font-size: 12px;
+  color: rgba(27, 27, 27, 0.6);
+}
+
+.crm-history__text b {
+  color: #1b1b1b;
+  font-weight: 600;
+}
+
+/* Launch calendar */
+.cal-month {
+  margin-left: 12px;
+  font-family: "DM Sans";
+  font-size: 14px;
+  color: rgba(27, 27, 27, 0.6);
+}
+
+.cal {
+  display: grid;
+  gap: 10px;
+}
+
+.cal__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  font-family: "DM Sans";
+  font-size: 11px;
+  color: rgba(27, 27, 27, 0.35);
+  padding: 0 8px;
+}
+
+.cal-week {
+  position: relative;
+}
+
+.cal-week__cells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.cal-cell {
+  min-height: 86px;
+  border-right: 1px solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  padding: 10px 10px 8px;
+  position: relative;
+}
+
+.cal-cell:nth-child(7n) {
+  border-right: 0;
+}
+
+.cal-cell__num {
+  font-family: "DM Sans";
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(27, 27, 27, 0.65);
+}
+
+.cal-cell.is-out {
+  background: repeating-linear-gradient(135deg, #fff, #fff 10px, #fbfbfb 10px, #fbfbfb 20px);
+}
+
+.cal-cell.is-today .cal-cell__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #d6f5d0;
+  color: #00591b;
+}
+
+.cal-week__bars {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 36px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  pointer-events: none;
+}
+
+.cal-bar {
+  height: 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: "DM Sans";
+  font-size: 12px;
+  color: rgba(27, 27, 27, 0.7);
+}
+
+.cal-bar--beige {
+  background: #fff3d9;
+  border-left: 3px solid #c77d00;
+}
+
+.cal-bar--purple {
+  background: #efe9ff;
+  border-left: 3px solid #6a3bd6;
+  color: #4a2db3;
+}
+
+.cal-bar--green {
+  background: #e7f8df;
+  border-left: 3px solid #00591b;
+  color: #00591b;
+}
+
+.cal-bar--gray {
+  background: #f3f4f6;
+  border-left: 3px solid #9ca3af;
+}
+
+.cal-bar__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Change Status popup */
+.crm-popup {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 13000;
+}
+
+.crm-popup.is-open {
+  display: grid;
+  place-items: center;
+}
+
+.crm-popup__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.35);
+}
+
+.crm-popup__dialog {
+  position: relative;
+  width: 420px;
+  max-width: calc(100vw - 24px);
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.14);
+  padding: 18px 18px 16px;
+  z-index: 1;
+}
+
+.crm-popup__close {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8a8a8a;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.crm-popup__close:hover {
+  background: #f5f6f7;
+  border-color: #eceef0;
+  color: #3a3a3a;
+}
+
+.crm-popup__title {
+  margin: 0 0 14px;
+  font-family: "DM Sans";
+  font-size: 16px;
+  font-weight: 700;
+  color: #1b1b1b;
+}
+
+.crm-popup__options {
+  display: grid;
+  gap: 10px;
+  margin: 6px 0 18px;
+}
+
+.crm-popup__opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "DM Sans";
+  font-size: 13px;
+}
+
+.crm-popup__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.crm-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  border: 1px solid transparent;
+}
+
+.crm-pill--paused {
+  background: #e9dcff;
+  color: #6a3bd6;
+}
+
+.crm-pill--terminated {
+  background: #ffd7d7;
+  color: #c01a1a;
+}
+
+.crm-pill--archived {
+  background: #eceff2;
+  color: #6b7280;
+}
+
+/* Create Campaign — custom date picker (Figma-style) */
+.crm-datepicker {
+  position: relative;
+  width: 100%;
+}
+
+.crm-datepicker__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #eceef0;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.crm-datepicker__trigger:hover {
+  border-color: #e0e2e5;
+}
+
+.crm-datepicker__icon {
+  display: inline-flex;
+  color: #a0a6ad;
+  flex: 0 0 auto;
+}
+
+.crm-datepicker__icon-svg {
+  display: block;
+}
+
+.crm-datepicker__text {
+  flex: 1 1 auto;
+  color: #c6c6c6;
+  font-family: "DM Sans";
+  font-size: 14px;
+}
+
+.crm-datepicker__text.has-value {
+  color: #1b1b1b;
+}
+
+.crm-datepicker__popover {
+  margin-top: 8px;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  border: 1px solid #eceef0;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.12);
+}
+
+.crm-datepicker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.crm-datepicker__caption {
+  font-family: "DM Sans";
+  font-size: 15px;
+  font-weight: 600;
+  color: #1b1b1b;
+}
+
+.crm-datepicker__navbtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #c6c6c6;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.crm-datepicker__navbtn:hover {
+  border-color: #eceef0;
+  background: #fafafa;
+  color: #8a8a8a;
+}
+
+.crm-datepicker__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  font-family: "DM Sans";
+  font-size: 11px;
+  color: #c6c6c6;
+  padding: 0 2px 8px;
+}
+
+.crm-datepicker__divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  margin: 0 0 8px;
+}
+
+.crm-datepicker__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px 4px;
+}
+
+.crm-datepicker__day {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-family: "DM Sans";
+  font-size: 13px;
+  color: #1b1b1b;
+  cursor: pointer;
+}
+
+.crm-datepicker__day:hover:not(.crm-datepicker__day--muted) {
+  background: #f5f6f7;
+}
+
+.crm-datepicker__day--muted {
+  color: #c6c6c6;
+}
+
+.crm-datepicker__day.is-selected {
+  background: #d6f5d0;
+  color: #1b1b1b;
+  font-weight: 600;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -842,9 +1628,68 @@ line-height: normal;
   align-items: center;
 }
 
+.campaign-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.campaign-search--header {
+  flex: 0 0 420px;
+  max-width: 420px;
+}
+
+.campaign-toolbar--filters {
+  background: #fff;
+  border: 1px solid #eceef0;
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.campaign-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #eceef0;
+  background: #fff;
+  color: rgba(27, 27, 27, 0.6);
+  font-family: "DM Sans";
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filter-pill__icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  color: rgba(27, 27, 27, 0.55);
+}
+
+.filter-pill__icon svg {
+  width: 14px;
+  height: 14px;
+  color: currentColor;
+}
+
+.filter-pill__caret {
+  margin-left: 2px;
+  color: rgba(27, 27, 27, 0.35);
+  font-size: 12px;
+}
+
 .campaign-search {
-  flex: 1 1 520px;
-  max-width: 520px;
+  /* flex: 1 1 520px; */
+  max-width: 300px;
   display: flex;
   align-items: center;
   gap: 10px;

@@ -1,6 +1,7 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
+import { loadAudienceSegments, saveAudienceSegments, upsertAudienceSegment } from "../utils/crmStore.js";
 
 export function AudiencePage({ currentRoute = "/audience" } = {}) {
 
@@ -12,20 +13,27 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
   const isExperiments = currentRoute === "/experiments";
   const isReports = currentRoute === "/reports";
   const isSettings = currentRoute === "/settings";
-  const rows = [
-    row("New users", "Users who signed up in the last 30 days", "12 400"),
-    row("Returning users", "Users with at least one previous session", "8 950"),
-    row("Active users", "Users who interacted with the platform in the last 7 days", "4 234"),
-    row("High-value users", "Users with the highest purchase or engagement value", "2 763"),
-    row("Power users", "Highly engaged users with frequent activity", "948"),
-    row("High-value users", "Users with the highest purchase or engagement value", "2 763"),
-    row("Returning users", "Users with at least one previous session", "8 950"),
-    row("New users", "Users who signed up in the last 30 days", "12 400"),
-    row("Power users", "Highly engaged users with frequent activity", "948"),
-    row("Returning users", "Users with at least one previous session", "8 950"),
-    row("High-value users", "Users with the highest purchase or engagement value", "2 763"),
-    row("Active users", "Users who interacted with the platform in the last 7 days", "4 234"),
+  const defaultRows = [
+    row("New Users", "Users who signed up in the last 30 days", "12 400"),
+    row("Returning Users", "Users with at least one previous session", "8 950"),
+    row("Active Users", "Users who interacted with the platform in the last 7 days", "4 234"),
+    row("High-value Users", "Users with the highest purchase or engagement value", "2 763"),
+    row("Power Users", "Highly engaged users with frequent activity", "948"),
+    row("Churn-risk Users", "Users whose activity dropped significantly in the last 14 days", "1 382"),
+    row("Newsletter Subscribers", "Users subscribed to marketing emails", "6 210"),
+    row("Recent Purchasers", "Users who made a purchase in the last 30 days", "1 905"),
+    row("Cart Abandoners", "Users who added items to cart but didn’t complete checkout", "2 118"),
   ];
+
+  const seededSegments = () =>
+    defaultRows.map((r, idx) => ({
+      id: `SEG-${String(idx + 1).padStart(3, "0")}`,
+      name: r.name,
+      description: r.description,
+      size: r.size,
+      definition: "This segment represents a predefined group of users used for campaign targeting.",
+      updatedAt: Date.now(),
+    }));
 
   const markup = `
     <main class="dashboard-layout">
@@ -143,7 +151,34 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
                 </tr>
               </thead>
               <tbody>
-                ${rows.map(renderRow).join("")}
+                ${(() => {
+                  const stored = loadAudienceSegments();
+                  const seed = seededSegments(); // SEG-001..SEG-009
+
+                  if (!stored.length) {
+                    saveAudienceSegments(seed);
+                    return seed.map(renderRow).join("");
+                  }
+
+                  // Auto-append any missing seeded segments without overwriting user edits.
+                  const byId = new Map(stored.map((s) => [s?.id, s]));
+                  let changed = false;
+                  for (const seg of seed) {
+                    if (!byId.has(seg.id)) {
+                      byId.set(seg.id, seg);
+                      changed = true;
+                    }
+                  }
+
+                  const merged = Array.from(byId.values()).sort((a, b) => {
+                    const ai = Number(String(a?.id ?? "").replace(/\D+/g, "")) || 0;
+                    const bi = Number(String(b?.id ?? "").replace(/\D+/g, "")) || 0;
+                    return ai - bi;
+                  });
+
+                  if (changed) saveAudienceSegments(merged);
+                  return merged.map(renderRow).join("");
+                })()}
               </tbody>
             </table>
 
@@ -165,13 +200,204 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
             </div>
           </div>
         </section>
+
+        <div class="crm-modal" data-segment-modal aria-hidden="true">
+          <div class="crm-modal__backdrop" data-segment-close></div>
+          <div class="crm-modal__dialog crm-overview" role="dialog" aria-modal="true" aria-labelledby="segment-title">
+            <div class="crm-modal__head">
+              <div>
+                <h2 class="crm-modal__title" id="segment-title" data-seg-title>Segment</h2>
+                <p class="crm-modal__subtitle">Audience segment details</p>
+              </div>
+              <button type="button" class="crm-modal__close" aria-label="Close" data-segment-close>×</button>
+            </div>
+
+            <div class="crm-overview__scroll">
+              <div class="crm-modal__section">
+                <div class="crm-modal__section-label">Segment Details</div>
+                <div class="crm-form-grid">
+                  <label class="crm-field">
+                    <span class="crm-field__label">Segment Name <span class="crm-field__req">*</span></span>
+                    <input class="crm-field__input" type="text" data-seg-name />
+                  </label>
+                  <label class="crm-field">
+                    <span class="crm-field__label">Estimated audience size <span class="crm-field__req">*</span></span>
+                    <input class="crm-field__input" type="text" inputmode="numeric" data-seg-size />
+                  </label>
+                  <label class="crm-field crm-field--full">
+                    <span class="crm-field__label">Description</span>
+                    <input class="crm-field__input" type="text" data-seg-desc />
+                  </label>
+                </div>
+              </div>
+
+              <div class="crm-modal__divider"></div>
+
+              <div class="crm-modal__section">
+                <div class="crm-modal__section-label">Segment Definition</div>
+                <div class="crm-overview__text" data-seg-def></div>
+                <div class="crm-hint">
+                  <div class="crm-hint__title">Usage hint:</div>
+                  <div class="crm-hint__text">This segment can be selected during campaign setup.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="crm-modal__footer crm-overview__footer">
+              <div class="crm-overview__footer-actions">
+                <button type="button" class="crm-btn crm-btn--primary" data-seg-edit>Edit</button>
+                <button type="button" class="crm-btn crm-btn--primary" data-seg-save hidden>Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   `;
 
+  let cleanup = null;
+
   return {
     mount(target) {
       target.innerHTML = markup;
+
+      const root = target.querySelector(".dashboard-layout");
+      if (!root) return;
+
+      const modal = root.querySelector("[data-segment-modal]");
+      const titleEl = root.querySelector("[data-seg-title]");
+      const nameEl = root.querySelector("[data-seg-name]");
+      const sizeEl = root.querySelector("[data-seg-size]");
+      const descEl = root.querySelector("[data-seg-desc]");
+      const defEl = root.querySelector("[data-seg-def]");
+      const editBtn = root.querySelector("[data-seg-edit]");
+      const saveBtn = root.querySelector("[data-seg-save]");
+
+      /** @type {null | {id:string,name:string,description:string,size:string,definition:string,updatedAt:number}} */
+      let current = null;
+      let editing = false;
+
+      const setModalOpen = (open) => {
+        if (!modal) return;
+        modal.classList.toggle("is-open", open);
+        modal.setAttribute("aria-hidden", open ? "false" : "true");
+        document.documentElement.classList.toggle("has-modal", open);
+        if (!open) setEditing(false);
+      };
+
+      const setEditing = (on) => {
+        editing = on;
+        const ro = !editing;
+        if (nameEl) nameEl.readOnly = ro;
+        if (sizeEl) sizeEl.readOnly = ro;
+        if (descEl) descEl.readOnly = ro;
+        if (editBtn) editBtn.hidden = editing;
+        if (saveBtn) saveBtn.hidden = !editing;
+      };
+
+      const fill = (seg) => {
+        current = seg;
+        if (titleEl) titleEl.textContent = seg.name;
+        if (nameEl) nameEl.value = seg.name || "";
+        if (sizeEl) sizeEl.value = seg.size || "";
+        if (descEl) descEl.value = seg.description || "";
+        if (defEl) defEl.textContent = seg.definition || "";
+      };
+
+      const updateRow = (seg) => {
+        const tr = root.querySelector(`tr[data-seg-id="${seg.id}"]`);
+        if (!tr) return;
+        if (tr.children?.[0]) tr.children[0].textContent = seg.name;
+        if (tr.children?.[1]) tr.children[1].textContent = seg.description;
+        if (tr.children?.[2]) tr.children[2].textContent = seg.size;
+      };
+
+      const clearErrors = () => {
+        root.querySelectorAll(".is-invalid").forEach((el) => el.classList.remove("is-invalid"));
+      };
+
+      const validate = () => {
+        clearErrors();
+        let ok = true;
+        if (!String(nameEl?.value ?? "").trim()) {
+          nameEl?.classList.add("is-invalid");
+          ok = false;
+        }
+        if (!String(sizeEl?.value ?? "").trim()) {
+          sizeEl?.classList.add("is-invalid");
+          ok = false;
+        }
+        return ok;
+      };
+
+      const onClick = (event) => {
+        const close = event.target.closest?.("[data-segment-close]");
+        if (close && modal?.classList.contains("is-open")) {
+          event.preventDefault();
+          setModalOpen(false);
+          return;
+        }
+
+        const row = event.target.closest?.("tr[data-seg-id]");
+        if (row && root.contains(row)) {
+          const id = row.getAttribute("data-seg-id");
+          const segs = loadAudienceSegments();
+          const seg = segs.find((s) => s.id === id);
+          if (seg) {
+            fill(seg);
+            setEditing(false);
+            setModalOpen(true);
+          }
+          return;
+        }
+
+        const edit = event.target.closest?.("[data-seg-edit]");
+        if (edit) {
+          event.preventDefault();
+          setEditing(true);
+          nameEl?.focus?.();
+          return;
+        }
+
+        const save = event.target.closest?.("[data-seg-save]");
+        if (save) {
+          event.preventDefault();
+          if (!current) return;
+          if (!validate()) return;
+          const updated = {
+            ...current,
+            name: String(nameEl?.value ?? "").trim(),
+            size: String(sizeEl?.value ?? "").trim(),
+            description: String(descEl?.value ?? "").trim(),
+            updatedAt: Date.now(),
+          };
+          upsertAudienceSegment(updated);
+          fill(updated);
+          updateRow(updated);
+          setEditing(false);
+        }
+      };
+
+      const onKeyDown = (event) => {
+        if (event.key !== "Escape") return;
+        if (!modal?.classList.contains("is-open")) return;
+        event.preventDefault();
+        setModalOpen(false);
+      };
+
+      root.addEventListener("click", onClick);
+      document.addEventListener("keydown", onKeyDown);
+      setEditing(false);
+
+      cleanup = () => {
+        root.removeEventListener("click", onClick);
+        document.removeEventListener("keydown", onKeyDown);
+        document.documentElement.classList.remove("has-modal");
+      };
+    },
+    unmount() {
+      if (typeof cleanup === "function") cleanup();
+      cleanup = null;
     },
   };
 }
@@ -183,8 +409,9 @@ function row(name, description, size) {
 }
 
 function renderRow(item) {
+  const id = item.id ?? `SEG-${Math.floor(100 + Math.random() * 90000)}`;
   return `
-    <tr>
+    <tr data-seg-id="${escapeHtml(id)}" style="cursor:pointer;">
       <td>${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.description)}</td>
       <td>${escapeHtml(item.size)}</td>

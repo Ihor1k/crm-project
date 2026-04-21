@@ -1,6 +1,7 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
+import { deleteContentItem, loadContentItems, saveContentItems, upsertContentItem } from "../utils/crmStore.js";
 import contentLibraryImg1 from "../images/content-library-1.png";
 import contentLibraryImg2 from "../images/content-library-2.png";
 import contentLibraryImg3 from "../images/content-library-3.png";
@@ -20,6 +21,7 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
 
   const state = {
     openRowId: null,
+    savedContent: null,
   };
 
   let cleanup = null;
@@ -140,7 +142,7 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-export-btn>
               <span class="ghost-btn__icon" aria-hidden="true">${exportIcon()}</span>
               Export
             </button>
@@ -210,11 +212,11 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
               <div class="crm-form-grid">
                 <label class="crm-field">
                   <span class="crm-field__label">Content Name <span class="crm-field__req">*</span></span>
-                  <input class="crm-field__input" type="text" placeholder="Enter Content Name" />
+                  <input class="crm-field__input" type="text" placeholder="Enter Content Name" data-field="contentName" />
                 </label>
                 <label class="crm-field">
                   <span class="crm-field__label">Type <span class="crm-field__req">*</span></span>
-                  <select class="crm-field__input">
+                  <select class="crm-field__input" data-field="contentType">
                     <option value="" selected disabled>Select Type</option>
                     <option>Banner</option>
                     <option>Card</option>
@@ -223,7 +225,7 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
                 </label>
                 <label class="crm-field crm-field--full">
                   <span class="crm-field__label">Description</span>
-                  <input class="crm-field__input" type="text" placeholder="Enter description" />
+                  <input class="crm-field__input" type="text" placeholder="Enter description" data-field="description" />
                 </label>
               </div>
             </div>
@@ -237,14 +239,19 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
                   Image <span class="crm-upload__info" title="JPG/PNG only" aria-label="JPG/PNG only">i</span>
                 </div>
                 <div class="crm-upload__drop">
-                  <div class="crm-upload__icon" aria-hidden="true"><img src="${modalImg}"/></div>
-                  <div class="crm-upload__text">
-                    <div><span class="crm-upload__muted">Drop image here or</span> <button type="button" class="crm-upload__link">upload file</button></div>
+                  <div class="crm-upload__icon" aria-hidden="true" data-upload-empty><img src="${modalImg}" alt="" /></div>
+                  <div class="crm-upload__thumb" data-image-thumb hidden>
+                    <img class="crm-upload__thumb-img" data-image-preview alt="Uploaded preview" />
+                    <button type="button" class="crm-upload__thumb-del" data-image-delete aria-label="Delete image">${trashSmallIcon()}</button>
+                  </div>
+                  <div class="crm-upload__text" data-upload-text>
+                    <div><span class="crm-upload__muted">Drop image here or</span> <button type="button" class="crm-upload__link" data-upload-file-btn>upload file</button></div>
                     <div class="crm-upload__hint">Accepted: JPG/PNG</div>
                   </div>
+                  <input type="file" accept="image/png,image/jpeg" hidden data-image-file-input />
                 </div>
                 <div class="crm-upload__or">or</div>
-                <input class="crm-field__input" type="url" placeholder="Paste image URL" />
+                <input class="crm-field__input" type="url" placeholder="Paste image URL" data-image-url-input />
               </div>
             </div>
 
@@ -256,14 +263,14 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
                 <div class="crm-modal__status-row">
                   <div class="crm-modal__status-text">Active</div>
                   <label class="crm-switch">
-                    <input class="crm-switch__input" type="checkbox" checked />
+                    <input class="crm-switch__input" type="checkbox" data-field="active" />
                     <span class="crm-switch__track" aria-hidden="true"></span>
                   </label>
                 </div>
               </div>
               <div class="crm-modal__actions">
                 <button type="button" class="crm-btn crm-btn--link" data-modal-close>Cancel</button>
-                <button type="button" class="crm-btn crm-btn--disabled" aria-disabled="true">Save Content</button>
+                <button type="button" class="crm-btn crm-btn--primary" data-save-content>Save Content</button>
               </div>
             </div>
           </div>
@@ -276,6 +283,20 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     target.innerHTML = markup;
     const root = target.querySelector(".dashboard-layout");
     if (!root) return;
+
+    // Seed localStorage once so Launch Calendar can use it.
+    if (loadContentItems().length === 0) {
+      const seeded = rows.map((r, idx) => ({
+        id: `CL-${String(idx + 1).padStart(3, "0")}`,
+        name: r.name,
+        type: r.type,
+        status: r.status,
+        thumb: r.thumb,
+        description: "",
+        updatedAt: Date.now(),
+      }));
+      saveContentItems(seeded);
+    }
 
     // Thumbnail hover preview (larger image near cursor)
     const preview = document.createElement("div");
@@ -349,8 +370,35 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     };
 
     const modal = root.querySelector("[data-create-content-modal]");
-    const createBtn = root.querySelector("[data-create-content-btn]");
     let lastFocusedEl = null;
+
+    const fileInput = root.querySelector("[data-image-file-input]");
+    const urlInput = root.querySelector("[data-image-url-input]");
+    const thumbWrap = root.querySelector("[data-image-thumb]");
+    const emptyIcon = root.querySelector("[data-upload-empty]");
+    const uploadText = root.querySelector("[data-upload-text]");
+    const previewImgEl = root.querySelector("[data-image-preview]");
+    let imageSrc = "";
+    let editingRowId = null;
+
+    const contentStore = new Map();
+    root.querySelectorAll("button[data-row-dots]").forEach((btn) => {
+      const id = btn.getAttribute("data-row-dots");
+      const tr = btn.closest("tr");
+      if (!id || !tr) return;
+      const img = tr.querySelector('img[data-thumb-preview]');
+      const nameCell = tr.children?.[1];
+      const typeCell = tr.children?.[2];
+      const statusBadge = tr.querySelector(".status-badge");
+      contentStore.set(id, {
+        id,
+        name: nameCell ? nameCell.textContent.trim() : "",
+        type: typeCell ? typeCell.textContent.trim() : "",
+        status: statusBadge ? statusBadge.textContent.trim() : "Inactive",
+        thumb: img ? img.getAttribute("data-thumb-preview") || img.getAttribute("src") || "" : "",
+        description: "",
+      });
+    });
 
     const filterBtn = root.querySelector("[data-filter-btn]");
     const filterPopover = root.querySelector("[data-filter-popover]");
@@ -361,6 +409,7 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
       modal.classList.toggle("is-open", open);
       modal.setAttribute("aria-hidden", open ? "false" : "true");
       document.documentElement.classList.toggle("has-modal", open);
+      if (!open) clearFormErrors();
       if (open) {
         lastFocusedEl = document.activeElement;
         const firstField = modal.querySelector("input, select, button");
@@ -368,6 +417,202 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
       } else if (lastFocusedEl && typeof lastFocusedEl.focus === "function") {
         lastFocusedEl.focus();
       }
+    };
+
+    const clearFormErrors = () => {
+      modal?.querySelectorAll(".is-invalid")?.forEach((el) => el.classList.remove("is-invalid"));
+    };
+
+    const markInvalid = (el) => {
+      if (!el) return;
+      el.classList.add("is-invalid");
+    };
+
+    const setImage = (nextSrc) => {
+      imageSrc = String(nextSrc || "").trim();
+      const has = Boolean(imageSrc);
+      if (thumbWrap) thumbWrap.hidden = !has;
+      if (emptyIcon) emptyIcon.style.display = has ? "none" : "";
+      if (uploadText) uploadText.style.display = has ? "none" : "";
+      if (previewImgEl) {
+        if (has) previewImgEl.src = imageSrc;
+        else previewImgEl.removeAttribute("src");
+      }
+    };
+
+    const resetImage = () => {
+      if (fileInput) fileInput.value = "";
+      if (urlInput) urlInput.value = "";
+      setImage("");
+    };
+
+    const getFieldValue = (key) => {
+      const el = modal?.querySelector(`[data-field="${key}"]`);
+      if (!el) return "";
+      if (el.type === "checkbox") return el.checked ? "true" : "false";
+      return String(el.value ?? "").trim();
+    };
+
+    const validateContentForm = () => {
+      clearFormErrors();
+      /** @type {Array<HTMLElement>} */
+      const invalidEls = [];
+
+      ["contentName", "contentType", "description"].forEach((key) => {
+        const el = modal?.querySelector(`[data-field="${key}"]`);
+        const val = String(el?.value ?? "").trim();
+        if (!val) {
+          if (el) markInvalid(el);
+          if (el) invalidEls.push(el);
+        }
+      });
+
+      if (!imageSrc) {
+        if (urlInput) markInvalid(urlInput);
+        if (urlInput) invalidEls.push(urlInput);
+      }
+
+      if (invalidEls.length > 0) {
+        invalidEls[0].focus?.();
+        return false;
+      }
+      return true;
+    };
+
+    const generateContentId = () => `CL-${Math.floor(100 + Math.random() * 90000)}`;
+
+    const appendContentRow = (content) => {
+      const tbody = root.querySelector("table.campaign-table tbody");
+      if (!tbody) return;
+      tbody.insertAdjacentHTML("afterbegin", renderRow(content));
+    };
+
+    const csvEscape = (v) => {
+      const s = String(v ?? "");
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const exportContentLibraryCsv = () => {
+      const table = root.querySelector("table.campaign-table--manager");
+      if (!table) return;
+
+      const headers = ["Content Name", "Type", "Status"];
+      const rows = Array.from(table.querySelectorAll("tbody tr"))
+        .filter((tr) => !tr.hasAttribute("hidden"))
+        .map((tr) => {
+          const tds = Array.from(tr.querySelectorAll("td"));
+          return [
+            tds[1]?.textContent?.trim() ?? "",
+            tds[2]?.textContent?.trim() ?? "",
+            tds[3]?.textContent?.trim() ?? "",
+          ];
+        });
+
+      const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(",")).join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "content-library.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    const updateContentRow = (content) => {
+      const dotsBtn = root.querySelector(`button[data-row-dots="${cssEscape(content.id)}"]`);
+      const tr = dotsBtn?.closest?.("tr");
+      if (!tr) return;
+      tr.setAttribute("data-content-name", content.name);
+      const img = tr.querySelector('img[data-thumb-preview]');
+      if (img) {
+        img.setAttribute("src", content.thumb);
+        img.setAttribute("data-thumb-preview", content.thumb);
+        img.setAttribute("alt", `${content.name} preview`);
+      }
+      if (tr.children?.[1]) tr.children[1].textContent = content.name;
+      if (tr.children?.[2]) tr.children[2].textContent = content.type;
+      const badge = tr.querySelector(".status-badge");
+      if (badge) {
+        const statusKey = content.status.toLowerCase() === "active" ? "running" : "archived";
+        badge.className = `status-badge status-badge--${statusKey}`;
+        badge.textContent = content.status;
+      }
+    };
+
+    const resetForm = () => {
+      editingRowId = null;
+      modal?.querySelector('[data-field="contentName"]')?.setAttribute("value", "");
+      const nameInput = modal?.querySelector('[data-field="contentName"]');
+      const typeSelect = modal?.querySelector('[data-field="contentType"]');
+      const descInput = modal?.querySelector('[data-field="description"]');
+      const activeInput = modal?.querySelector('[data-field="active"]');
+      if (nameInput) nameInput.value = "";
+      if (typeSelect) typeSelect.value = "";
+      if (descInput) descInput.value = "";
+      if (activeInput) activeInput.checked = false;
+      resetImage();
+      const title = modal?.querySelector("#create-content-title");
+      if (title) title.textContent = "Create Content";
+      const saveBtn = modal?.querySelector("[data-save-content]");
+      if (saveBtn) saveBtn.textContent = "Save Content";
+    };
+
+    const fillFormForEdit = (item) => {
+      const nameInput = modal?.querySelector('[data-field="contentName"]');
+      const typeSelect = modal?.querySelector('[data-field="contentType"]');
+      const descInput = modal?.querySelector('[data-field="description"]');
+      const activeInput = modal?.querySelector('[data-field="active"]');
+      if (nameInput) nameInput.value = item.name || "";
+      if (typeSelect) typeSelect.value = item.type || "";
+      if (descInput) descInput.value = item.description || "";
+      if (activeInput) activeInput.checked = String(item.status).toLowerCase() === "active";
+      setImage(item.thumb || "");
+      if (urlInput) urlInput.value = item.thumb || "";
+      const title = modal?.querySelector("#create-content-title");
+      if (title) title.textContent = "Edit Content";
+      const saveBtn = modal?.querySelector("[data-save-content]");
+      if (saveBtn) saveBtn.textContent = "Save";
+    };
+
+    const onFileChosen = () => {
+      const file = fileInput?.files?.[0];
+      if (!file) return;
+      if (!/^image\/(png|jpeg)$/.test(file.type)) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        setImage(result);
+        if (urlInput) urlInput.value = "";
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const onUrlInput = () => {
+      const url = String(urlInput?.value ?? "").trim();
+      if (!url) {
+        if (!fileInput?.files?.length) setImage("");
+        return;
+      }
+      setImage(url);
+      if (fileInput) fileInput.value = "";
+    };
+
+    const onDrop = (event) => {
+      if (!modal || !modal.classList.contains("is-open")) return;
+      event.preventDefault();
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      if (!/^image\/(png|jpeg)$/.test(file.type)) return;
+      if (fileInput) fileInput.files = event.dataTransfer.files;
+      onFileChosen();
+    };
+
+    const onDragOver = (event) => {
+      if (!modal || !modal.classList.contains("is-open")) return;
+      event.preventDefault();
     };
 
     const applyPrefixFilter = (prefixRaw) => {
@@ -410,6 +655,13 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     };
 
     const onRootClick = (event) => {
+      const exportBtn = event.target.closest?.("[data-export-btn]");
+      if (exportBtn) {
+        event.preventDefault();
+        exportContentLibraryCsv();
+        return;
+      }
+
       const modalClose = event.target.closest?.("[data-modal-close]");
       if (modalClose && modal && modal.classList.contains("is-open")) {
         event.preventDefault();
@@ -443,7 +695,74 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
       const createContent = event.target.closest?.("[data-create-content-btn]");
       if (createContent) {
         event.preventDefault();
+        resetForm();
         setModalOpen(true);
+        return;
+      }
+
+      const editBtn = event.target.closest?.("[data-row-edit]");
+      if (editBtn) {
+        event.preventDefault();
+        const rowId = editBtn.getAttribute("data-row-edit");
+        if (!rowId) return;
+        const item = contentStore.get(rowId);
+        if (!item) return;
+        editingRowId = rowId;
+        fillFormForEdit(item);
+        setModalOpen(true);
+        closeMenu();
+        return;
+      }
+
+      const deleteRowBtn = event.target.closest?.("[data-row-delete]");
+      if (deleteRowBtn) {
+        event.preventDefault();
+        const rowId = deleteRowBtn.getAttribute("data-row-delete");
+        if (!rowId) return;
+        const dotsBtn = root.querySelector(`button[data-row-dots="${cssEscape(rowId)}"]`);
+        const tr = dotsBtn?.closest?.("tr");
+        if (tr) tr.remove();
+        contentStore.delete(rowId);
+        deleteContentItem(rowId);
+        closeMenu();
+        return;
+      }
+
+      const uploadBtn = event.target.closest?.("[data-upload-file-btn]");
+      if (uploadBtn) {
+        event.preventDefault();
+        fileInput?.click?.();
+        return;
+      }
+
+      const del = event.target.closest?.("[data-image-delete]");
+      if (del) {
+        event.preventDefault();
+        resetImage();
+        return;
+      }
+
+      const save = event.target.closest?.("[data-save-content]");
+      if (save) {
+        event.preventDefault();
+        if (!validateContentForm()) return;
+
+        const active = getFieldValue("active") === "true";
+        const id = editingRowId || generateContentId();
+        const newItem = {
+          id,
+          name: getFieldValue("contentName"),
+          type: getFieldValue("contentType"),
+          status: active ? "Active" : "Inactive",
+          thumb: imageSrc,
+          description: getFieldValue("description"),
+        };
+        state.savedContent = newItem;
+        contentStore.set(id, newItem);
+        upsertContentItem({ ...newItem, updatedAt: Date.now() });
+        if (editingRowId) updateContentRow(newItem);
+        else appendContentRow(newItem);
+        setModalOpen(false);
         return;
       }
 
@@ -474,6 +793,8 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     root.addEventListener("mouseover", onThumbMouseOver);
     root.addEventListener("mousemove", onThumbMouseMove);
     root.addEventListener("mouseout", onThumbMouseOut);
+    root.addEventListener("drop", onDrop);
+    root.addEventListener("dragover", onDragOver);
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("click", onDocumentClickCapture, true);
 
@@ -489,16 +810,22 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
       setFilterOpen(false);
     };
     document.addEventListener("click", onDocumentClickForFilter, true);
+    fileInput?.addEventListener("change", onFileChosen);
+    urlInput?.addEventListener("input", onUrlInput);
 
     cleanup = () => {
       root.removeEventListener("click", onRootClick);
       root.removeEventListener("mouseover", onThumbMouseOver);
       root.removeEventListener("mousemove", onThumbMouseMove);
       root.removeEventListener("mouseout", onThumbMouseOut);
+      root.removeEventListener("drop", onDrop);
+      root.removeEventListener("dragover", onDragOver);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("click", onDocumentClickCapture, true);
       filterInput?.removeEventListener("input", onFilterInput);
       document.removeEventListener("click", onDocumentClickForFilter, true);
+      fileInput?.removeEventListener("change", onFileChosen);
+      urlInput?.removeEventListener("input", onUrlInput);
       preview.remove();
       document.documentElement.classList.remove("has-modal");
       cleanup = null;
@@ -540,8 +867,8 @@ function renderRow(item) {
             ${dotsIcon()}
           </button>
           <div class="row-menu" data-row-menu="${escapeHtmlAttr(item.id)}" role="menu" aria-label="Row actions">
-            <button type="button" role="menuitem"><span class="row-menu__icon">${editIcon()}</span>Edit</button>
-            <button type="button" role="menuitem" class="is-danger"><span class="row-menu__icon">${trashIcon()}</span>Delete</button>
+            <button type="button" role="menuitem" data-row-edit="${escapeHtmlAttr(item.id)}"><span class="row-menu__icon">${editIcon()}</span>Edit</button>
+            <button type="button" role="menuitem" class="is-danger" data-row-delete="${escapeHtmlAttr(item.id)}"><span class="row-menu__icon">${trashIcon()}</span>Delete</button>
           </div>
         </div>
       </td>
@@ -553,12 +880,12 @@ function cssEscape(v) {
   return String(v).replace(/"/g, '\\"');
 }
 
-function thumbSvg() {
-  return contentLibraryImg;
-}
-
 function dotsIcon() {
   return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>`;
+}
+
+function trashSmallIcon() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 7h12l-1 14H7L6 7Zm3-3h6l1 2H8l1-2Z"/></svg>`;
 }
 
 function editIcon() {

@@ -1,6 +1,7 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
-import calendarImg from "../images/calendar.png";
+import { loadCampaigns, loadContentItems } from "../utils/crmStore.js";
+import { escapeHtml } from "../utils/escapeHtml.js";
 
 export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
   const isDashboard = currentRoute === "/" || currentRoute === "/dashboard";
@@ -91,17 +92,19 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
 
         <section class="campaign-toolbar" aria-label="Launch Calendar controls">
           <div class="campaign-toolbar__left">
-            <button type="button" class="ghost-btn" aria-label="Previous period">
+            <button type="button" class="ghost-btn" aria-label="Previous month" data-cal-prev>
               <span class="ghost-btn__icon" aria-hidden="true">${chevronLeftIcon()}</span>
             </button>
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-cal-today>
               <span class="calendar-icon" style="margin-top: 2px;"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="14" viewBox="0 0 15 14" fill="none">
               <path d="M9.91699 0C10.0716 8.62331e-05 10.2198 0.0615791 10.3291 0.170898C10.4384 0.280218 10.4999 0.428416 10.5 0.583008V1.16699H11.083C11.8561 1.16792 12.5978 1.47491 13.1445 2.02148C13.6912 2.56819 13.999 3.30986 14 4.08301V11.083C13.9991 11.8563 13.6913 12.5978 13.1445 13.1445C12.5978 13.6913 11.8563 13.9991 11.083 14H2.91699C2.14373 13.9991 1.40225 13.6913 0.855469 13.1445C0.308688 12.5978 0.00092625 11.8563 0 11.083V4.08301C0.00101213 3.30986 0.308765 2.56819 0.855469 2.02148C1.40222 1.47491 2.14388 1.16792 2.91699 1.16699H3.5V0.583008C3.50009 0.428416 3.56158 0.280218 3.6709 0.170898C3.78022 0.0615789 3.92842 8.6107e-05 4.08301 0C4.23772 0 4.3867 0.0615022 4.49609 0.170898C4.60531 0.280202 4.66691 0.428492 4.66699 0.583008V1.16699H9.33301V0.583008C9.33309 0.428492 9.39469 0.280202 9.50391 0.170898C9.6133 0.0615022 9.76228 0 9.91699 0ZM1.16699 11.083C1.16699 11.5471 1.3515 11.9921 1.67969 12.3203C2.00788 12.6485 2.45286 12.833 2.91699 12.833H11.083C11.5471 12.833 11.9921 12.6485 12.3203 12.3203C12.6485 11.9921 12.833 11.5471 12.833 11.083V5.83301H1.16699V11.083ZM4.08301 7.875C4.56626 7.875 4.95801 8.26675 4.95801 8.75C4.95801 9.23325 4.56626 9.625 4.08301 9.625C3.59991 9.62482 3.20801 9.23314 3.20801 8.75C3.20801 8.26686 3.59991 7.87518 4.08301 7.875ZM7 7.875C7.48325 7.875 7.875 8.26675 7.875 8.75C7.875 9.23325 7.48325 9.625 7 9.625C6.51675 9.625 6.125 9.23325 6.125 8.75C6.125 8.26675 6.51675 7.875 7 7.875ZM9.91699 7.875C10.4001 7.87518 10.792 8.26686 10.792 8.75C10.792 9.23314 10.4001 9.62482 9.91699 9.625C9.43374 9.625 9.04199 9.23325 9.04199 8.75C9.04199 8.26675 9.43374 7.875 9.91699 7.875ZM2.91699 2.33301C2.45302 2.33301 2.00784 2.51772 1.67969 2.8457C1.35158 3.17382 1.16708 3.619 1.16699 4.08301V4.66699H12.833V4.08301C12.8329 3.619 12.6484 3.17382 12.3203 2.8457C11.9922 2.51772 11.547 2.33301 11.083 2.33301H2.91699Z" fill="#3A3A3A"/>
             </svg></span>This month
             </button>
-            <button type="button" class="ghost-btn" aria-label="Next period">
+            <button type="button" class="ghost-btn" aria-label="Next month" data-cal-next>
               <span class="ghost-btn__icon" aria-hidden="true">${chevronRightIcon()}</span>
             </button>
+            <div class="cal-month" data-cal-month aria-live="polite"></div>
+            
           </div>
 
           <div class="campaign-toolbar__actions">
@@ -112,21 +115,20 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-export-btn>
               <span class="ghost-btn__icon" aria-hidden="true">${exportIcon()}</span>
               Export
             </button>
           </div>
         </section>
 
-        <section class="panel campaign-panel" aria-label="Launch calendar preview">
-          
-            <img
-              src="${calendarImg}"
-              alt="Calendar preview"
-              style="display:block;width:100%;height:auto;"
-            />
-          
+        <section class="panel campaign-panel" aria-label="Launch calendar">
+          <div class="cal" data-cal-root>
+            <div class="cal__weekdays" aria-hidden="true">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+            <div class="cal__grid" data-cal-grid></div>
+          </div>
         </section>
       </section>
     </main>
@@ -135,6 +137,192 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
   return {
     mount(target) {
       target.innerHTML = markup;
+
+      const root = target.querySelector("[data-cal-root]");
+      const grid = target.querySelector("[data-cal-grid]");
+      const monthLabel = target.querySelector("[data-cal-month]");
+      if (!root || !grid || !monthLabel) return;
+
+      const state = { year: 0, month: 0 };
+      const now = new Date();
+      state.year = now.getFullYear();
+      state.month = now.getMonth();
+
+      const toDate = (iso) => {
+        const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return null;
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      };
+
+      const monthCaption = (y, m) =>
+        new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(new Date(y, m, 1));
+
+      const startOfGrid = (y, m) => {
+        const first = new Date(y, m, 1);
+        const dow = (first.getDay() + 6) % 7; // Monday = 0
+        const start = new Date(y, m, 1 - dow);
+        return start;
+      };
+
+      const sameMonth = (d, y, m) => d.getFullYear() === y && d.getMonth() === m;
+
+      const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+      const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+      const campaignEvents = () => {
+        const campaigns = loadCampaigns();
+        return campaigns
+          .map((c) => ({
+            kind: "campaign",
+            id: c.id,
+            title: c.campaignName || c.name || c.id,
+            start: toDate(c.startDate) || toDate(c.createdDate) || null,
+            end: toDate(c.endDate) || null,
+            color: c.status === "Running" ? "green" : c.status === "Paused" ? "purple" : "beige",
+          }))
+          .filter((e) => e.start && e.end);
+      };
+
+      const contentEvents = (y, m) => {
+        const items = loadContentItems();
+        return items.slice(0, 8).map((it) => {
+          // deterministic pseudo placement based on id
+          const seed = Array.from(String(it.id)).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+          const day = clamp((seed % 27) + 1, 1, 28);
+          const d = new Date(y, m, day);
+          return {
+            kind: "content",
+            id: it.id,
+            title: it.name,
+            start: d,
+            end: d,
+            color: it.type === "Banner" ? "beige" : "gray",
+          };
+        });
+      };
+
+      const render = () => {
+        monthLabel.textContent = monthCaption(state.year, state.month);
+        const start = startOfGrid(state.year, state.month);
+        const days = [];
+        for (let i = 0; i < 42; i++) {
+          const d = new Date(start);
+          d.setDate(start.getDate() + i);
+          days.push(d);
+        }
+
+        const events = [...campaignEvents(), ...contentEvents(state.year, state.month)];
+
+        // group events by week index to render spanning bars within each week row
+        const weeks = Array.from({ length: 6 }, () => []);
+        events.forEach((e) => {
+          const s = e.start;
+          const eEnd = e.end;
+          const gridStart = start;
+          const gridEnd = new Date(start);
+          gridEnd.setDate(start.getDate() + 41);
+          if (eEnd < gridStart || s > gridEnd) return;
+
+          const clampedStart = new Date(Math.max(s, gridStart));
+          const clampedEnd = new Date(Math.min(eEnd, gridEnd));
+          const startIndex = Math.floor((clampedStart - gridStart) / 86400000);
+          const endIndex = Math.floor((clampedEnd - gridStart) / 86400000);
+          const startWeek = Math.floor(startIndex / 7);
+          const endWeek = Math.floor(endIndex / 7);
+          for (let w = startWeek; w <= endWeek; w++) {
+            const weekStartIdx = w * 7;
+            const from = w === startWeek ? startIndex - weekStartIdx : 0;
+            const to = w === endWeek ? endIndex - weekStartIdx : 6;
+            weeks[w].push({ ...e, from, to });
+          }
+        });
+
+        grid.innerHTML = "";
+        for (let w = 0; w < 6; w++) {
+          const weekDays = days.slice(w * 7, w * 7 + 7);
+          const weekEl = document.createElement("div");
+          weekEl.className = "cal-week";
+
+          const cells = document.createElement("div");
+          cells.className = "cal-week__cells";
+          weekDays.forEach((d) => {
+            const cell = document.createElement("div");
+            cell.className = "cal-cell";
+            if (!sameMonth(d, state.year, state.month)) cell.classList.add("is-out");
+            if (dayKey(d) === dayKey(now)) cell.classList.add("is-today");
+            cell.innerHTML = `<div class="cal-cell__num">${d.getDate()}</div>`;
+            cells.appendChild(cell);
+          });
+
+          const bars = document.createElement("div");
+          bars.className = "cal-week__bars";
+          weeks[w].slice(0, 6).forEach((ev) => {
+            const bar = document.createElement("div");
+            bar.className = `cal-bar cal-bar--${ev.color}`;
+            bar.style.gridColumn = `${ev.from + 1} / ${ev.to + 2}`;
+            bar.innerHTML = `<span class="cal-bar__text">${escapeHtml(ev.title)}</span>`;
+            bars.appendChild(bar);
+          });
+
+          weekEl.appendChild(cells);
+          weekEl.appendChild(bars);
+          grid.appendChild(weekEl);
+        }
+      };
+
+      const onClick = (event) => {
+        if (event.target.closest?.("[data-cal-prev]")) {
+          state.month -= 1;
+          if (state.month < 0) {
+            state.month = 11;
+            state.year -= 1;
+          }
+          render();
+          return;
+        }
+        if (event.target.closest?.("[data-cal-next]")) {
+          state.month += 1;
+          if (state.month > 11) {
+            state.month = 0;
+            state.year += 1;
+          }
+          render();
+          return;
+        }
+        if (event.target.closest?.("[data-cal-today]")) {
+          state.year = now.getFullYear();
+          state.month = now.getMonth();
+          render();
+          return;
+        }
+        if (event.target.closest?.("[data-export-btn]")) {
+          event.preventDefault();
+          // Export current visible campaign events for this month
+          const events = campaignEvents()
+            .filter((e) => e.start.getFullYear() === state.year && e.start.getMonth() === state.month)
+            .map((e) => [e.title, dayKey(e.start), dayKey(e.end)]);
+          const csv = [["Title", "Start", "End"], ...events]
+            .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+            .join("\r\n");
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "launch-calendar.csv";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+      };
+
+      target.addEventListener("click", onClick);
+      render();
+
+      this.unmount = () => {
+        target.removeEventListener("click", onClick);
+      };
     },
     // No global listeners to clean up, but keep the interface consistent.
     unmount() {},

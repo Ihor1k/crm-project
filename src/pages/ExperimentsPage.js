@@ -118,7 +118,7 @@ export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-export-btn>
               <span class="ghost-btn__icon" aria-hidden="true">${exportIcon()}</span>
               Export
             </button>
@@ -181,6 +181,32 @@ export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
       const root = target.querySelector(".dashboard-layout");
       if (!root) return;
 
+      const csvEscape = (v) => {
+        const s = String(v ?? "");
+        if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+      };
+
+      const exportExperimentsCsv = () => {
+        const table = root.querySelector("table.campaign-table");
+        if (!table) return;
+        const headers = Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent.trim());
+        const rows = Array.from(table.querySelectorAll("tbody tr"))
+          .filter((tr) => !tr.hasAttribute("hidden"))
+          .map((tr) => Array.from(tr.querySelectorAll("td")).map((td) => td.textContent.trim()));
+
+        const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(",")).join("\r\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "experiments.csv";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      };
+
       const filterBtn = root.querySelector("[data-filter-btn]");
       const filterPopover = root.querySelector("[data-filter-popover]");
       const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
@@ -211,6 +237,13 @@ export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
       filterInput?.addEventListener("input", onFilterInput);
 
       const onRootClick = (event) => {
+        const exportBtn = event.target.closest?.("[data-export-btn]");
+        if (exportBtn) {
+          event.preventDefault();
+          exportExperimentsCsv();
+          return;
+        }
+
         const filterClose = event.target.closest?.("[data-filter-close]");
         if (filterClose && filterPopover?.classList?.contains("is-open")) {
           event.preventDefault();

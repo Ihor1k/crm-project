@@ -98,16 +98,67 @@ export function SettingsPage({ currentRoute = "/settings" } = {}) {
           </div>
 
           <div style="margin-top:auto;display:flex;justify-content:flex-end;">
-            <button type="button" class="dashboard-header__action" style="min-width:104px;">Save</button>
+            <button type="button" class="dashboard-header__action" style="min-width:104px;" data-settings-save>Save</button>
           </div>
         </section>
       </section>
     </main>
   `;
 
+  const STORAGE_KEY = "crm.settings.v1";
+
   return {
     mount(target) {
       target.innerHTML = markup;
+
+      const root = target.querySelector(".dashboard-layout");
+      if (!root) return;
+
+      const fields = {
+        workspaceName: root.querySelector("#workspace-name"),
+        dataRetention: root.querySelector("#data-retention"),
+        timezone: root.querySelector("#timezone"),
+        currency: root.querySelector("#currency"),
+      };
+
+      const load = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const data = JSON.parse(raw);
+          if (data?.workspaceName && fields.workspaceName) fields.workspaceName.value = String(data.workspaceName);
+          if (data?.dataRetention && fields.dataRetention) fields.dataRetention.value = String(data.dataRetention);
+          if (data?.timezone && fields.timezone) fields.timezone.value = String(data.timezone);
+          if (data?.currency && fields.currency) fields.currency.value = String(data.currency);
+        } catch {
+          // ignore bad localStorage data
+        }
+      };
+
+      const save = () => {
+        const data = {
+          workspaceName: String(fields.workspaceName?.value ?? "").trim(),
+          dataRetention: String(fields.dataRetention?.value ?? "").trim(),
+          timezone: String(fields.timezone?.value ?? "").trim(),
+          currency: String(fields.currency?.value ?? "").trim(),
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      };
+
+      const onClick = (event) => {
+        const btn = event.target.closest?.("[data-settings-save]");
+        if (!btn) return;
+        event.preventDefault();
+        save();
+      };
+
+      load();
+      root.addEventListener("click", onClick);
+
+      this.unmount = () => {
+        root.removeEventListener("click", onClick);
+      };
     },
     unmount() {},
   };

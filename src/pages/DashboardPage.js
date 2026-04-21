@@ -1,8 +1,12 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { StatCard } from "../components/StatCard.js";
+import {
+  campaignDatePickerField,
+  closeCampaignDatePickersIn,
+  mountCampaignDatePickers,
+} from "../components/campaignDatePicker.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
-import modalImg from "../images/modal-img.png"
 
 
 const statIcons = {
@@ -230,36 +234,39 @@ const isSettings = currentRoute === "/settings";
           </article>
         </section>
 
-        <div class="crm-modal" data-create-content-modal aria-hidden="true">
+        <div class="crm-modal" data-create-campaign-modal aria-hidden="true">
           <div class="crm-modal__backdrop" data-modal-close></div>
-          <div class="crm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="create-content-title">
+          <div class="crm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="create-campaign-title">
             <div class="crm-modal__head">
               <div>
-                <h2 class="crm-modal__title" id="create-content-title">Create Content</h2>
-                <p class="crm-modal__subtitle">Configure content settings and basic attributes</p>
+                <h2 class="crm-modal__title" id="create-campaign-title">Create Campaign</h2>
+                <p class="crm-modal__subtitle">Configure campaign settings and parameters</p>
               </div>
               <button type="button" class="crm-modal__close" aria-label="Close" data-modal-close>×</button>
             </div>
 
             <div class="crm-modal__section">
-              <div class="crm-modal__section-label">Basic Information</div>
+              <div class="crm-modal__section-label">Basic Information & Channel Configuration</div>
               <div class="crm-form-grid">
                 <label class="crm-field">
-                  <span class="crm-field__label">Content Name <span class="crm-field__req">*</span></span>
-                  <input class="crm-field__input" type="text" placeholder="Enter Content Name" />
+                  <span class="crm-field__label">Campaign Name <span class="crm-field__req">*</span></span>
+                  <input class="crm-field__input" type="text" placeholder="Enter Campaign Name" data-field="campaignName" />
                 </label>
                 <label class="crm-field">
-                  <span class="crm-field__label">Type <span class="crm-field__req">*</span></span>
-                  <select class="crm-field__input">
-                    <option value="" selected disabled>Select Type</option>
-                    <option>Banner</option>
-                    <option>Card</option>
-                    <option>Text</option>
+                  <span class="crm-field__label">Channel <span class="crm-field__req">*</span></span>
+                  <select class="crm-field__input" data-field="channel">
+                    <option value="" selected disabled>Select Channel</option>
+                    <option>Web</option>
+                    <option>Email</option>
+                    <option>Ads</option>
+                    <option>Push</option>
+                    <option>Social</option>
+                    <option>In-app</option>
                   </select>
                 </label>
                 <label class="crm-field crm-field--full">
                   <span class="crm-field__label">Description</span>
-                  <input class="crm-field__input" type="text" placeholder="Enter description" />
+                  <input class="crm-field__input" type="text" placeholder="Enter description" data-field="description" />
                 </label>
               </div>
             </div>
@@ -267,40 +274,146 @@ const isSettings = currentRoute === "/settings";
             <div class="crm-modal__divider"></div>
 
             <div class="crm-modal__section">
-              <div class="crm-modal__section-label">Media</div>
-              <div class="crm-upload">
-                <div class="crm-upload__label">
-                  Image <span class="crm-upload__info" title="JPG/PNG only" aria-label="JPG/PNG only">i</span>
-                </div>
-                <div class="crm-upload__drop">
-                  <div class="crm-upload__icon" aria-hidden="true"><img src="${modalImg}"/></div>
-                  <div class="crm-upload__text">
-                    <div><span class="crm-upload__muted">Drop image here or</span> <button type="button" class="crm-upload__link">upload file</button></div>
-                    <div class="crm-upload__hint">Accepted: JPG/PNG</div>
-                  </div>
-                </div>
-                <div class="crm-upload__or">or</div>
-                <input class="crm-field__input" type="url" placeholder="Paste image URL" />
+              <div class="crm-modal__section-label">Geo Targeting & Audience</div>
+              <div class="crm-form-grid">
+                <label class="crm-field">
+                  <span class="crm-field__label">Geo</span>
+                  <select class="crm-field__input" data-field="geo">
+                    <option value="" selected disabled>Select Geo</option>
+                    <option>Global</option>
+                    <option>EU</option>
+                    <option>US</option>
+                    <option>LATAM</option>
+                    <option>APAC</option>
+                  </select>
+                </label>
+                <label class="crm-field">
+                  <span class="crm-field__label">Audience Segment</span>
+                  <select class="crm-field__input" data-field="audienceSegment">
+                    <option value="" selected disabled>Select Segment</option>
+                    <option>New Users</option>
+                    <option>Returning Users</option>
+                    <option>High Intent</option>
+                    <option>Churn Risk</option>
+                  </select>
+                </label>
               </div>
             </div>
 
             <div class="crm-modal__divider"></div>
 
-            <div class="crm-modal__footer">
-              <div class="crm-modal__status">
-                <div class="crm-modal__section-label" style="margin:0;">Status</div>
-                <div class="crm-modal__status-row">
-                  <div class="crm-modal__status-text">Active</div>
-                  <label class="crm-switch">
-                    <input class="crm-switch__input" type="checkbox" checked />
-                    <span class="crm-switch__track" aria-hidden="true"></span>
-                  </label>
-                </div>
+            <div class="crm-modal__section">
+              <div class="crm-modal__section-label">Campaign Schedule</div>
+              <div class="crm-form-grid">
+                ${campaignDatePickerField({
+                  labelText: "Start Date",
+                  placeholder: "Select Start Date",
+                  required: true,
+                  fieldKey: "startDate",
+                })}
+                ${campaignDatePickerField({
+                  labelText: "End Date",
+                  placeholder: "Select End Date",
+                  required: false,
+                  fieldKey: "endDate",
+                })}
               </div>
+            </div>
+
+            <div class="crm-modal__divider"></div>
+
+            <div class="crm-modal__section">
+              <div class="crm-modal__section-label">Linked Content</div>
+              <div class="crm-form-grid">
+                <label class="crm-field crm-field--full">
+                  <span class="crm-field__label">Linked Content</span>
+                  <select class="crm-field__input" data-field="linkedContent">
+                    <option value="" selected disabled>Select Content</option>
+                    <option>Homepage banner – Spring</option>
+                    <option>Summer Engagement Boost</option>
+                    <option>Welcome Message</option>
+                    <option>Back-to-School Special</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="crm-modal__divider"></div>
+
+            <div class="crm-modal__section">
+              <div class="crm-form-grid">
+                <label class="crm-field">
+                  <span class="crm-field__label">Content Type</span>
+                  <input class="crm-field__input" type="text" placeholder="Banner" data-field="contentType" />
+                </label>
+                <label class="crm-field">
+                  <span class="crm-field__label">Purpose</span>
+                  <select class="crm-field__input" data-field="purpose">
+                    <option value="" selected disabled>Select Purpose</option>
+                    <option>Retargeting</option>
+                    <option>Awareness</option>
+                    <option>Acquisition</option>
+                    <option>Engagement</option>
+                    <option>Retention</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="crm-modal__footer">
               <div class="crm-modal__actions">
                 <button type="button" class="crm-btn crm-btn--link" data-modal-close>Cancel</button>
-                <button type="button" class="crm-btn crm-btn--disabled" aria-disabled="true">Save Content</button>
+                <button type="button" class="crm-btn crm-btn--primary" data-save-campaign>Save Campaign</button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="crm-modal" data-campaign-overview-modal aria-hidden="true">
+          <div class="crm-modal__backdrop" data-overview-close></div>
+          <div class="crm-modal__dialog crm-overview" role="dialog" aria-modal="true" aria-labelledby="campaign-overview-title">
+            <div class="crm-modal__head">
+              <div>
+                <h2 class="crm-modal__title" id="campaign-overview-title" data-overview-title>Campaign</h2>
+                <p class="crm-modal__subtitle">Campaign overview and configuration</p>
+              </div>
+              <button type="button" class="crm-modal__close" aria-label="Close" data-overview-close>×</button>
+            </div>
+
+            <div class="crm-overview__scroll">
+              <div class="crm-modal__section">
+                <div class="crm-tabs" role="tablist" aria-label="Campaign tabs">
+                  <button type="button" class="crm-tab is-active" role="tab" aria-selected="true">Summary</button>
+                  <button type="button" class="crm-tab" role="tab" aria-selected="false">Activity</button>
+                  <button type="button" class="crm-tab" role="tab" aria-selected="false">Settings</button>
+                </div>
+              </div>
+
+              <div class="crm-modal__section" data-overview-body></div>
+            </div>
+
+            <div class="crm-modal__footer crm-overview__footer">
+              <div class="crm-overview__footer-actions">
+                <button type="button" class="crm-btn crm-btn--link crm-overview__ghost" data-duplicate-campaign>Duplicate</button>
+                <button type="button" class="crm-btn crm-btn--primary" data-edit-campaign>Edit Campaign</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="crm-popup" data-status-popup aria-hidden="true">
+          <div class="crm-popup__backdrop" data-status-close></div>
+          <div class="crm-popup__dialog" role="dialog" aria-modal="true" aria-labelledby="status-popup-title">
+            <button type="button" class="crm-popup__close" aria-label="Close" data-status-close>×</button>
+            <h3 class="crm-popup__title" id="status-popup-title" data-status-title>Change Status</h3>
+            <div class="crm-popup__options" role="radiogroup" aria-label="Status options">
+              <label class="crm-popup__opt"><input type="radio" name="campaignStatus" value="Paused" /> <span class="crm-pill crm-pill--paused">Paused</span></label>
+              <label class="crm-popup__opt"><input type="radio" name="campaignStatus" value="Terminated" /> <span class="crm-pill crm-pill--terminated">Terminated</span></label>
+              <label class="crm-popup__opt"><input type="radio" name="campaignStatus" value="Archived" /> <span class="crm-pill crm-pill--archived">Archived</span></label>
+            </div>
+            <div class="crm-popup__actions">
+              <button type="button" class="crm-btn crm-btn--outline" data-status-close>Cancel</button>
+              <button type="button" class="crm-btn crm-btn--primary" data-status-save>Save</button>
             </div>
           </div>
         </div>
@@ -308,19 +421,134 @@ const isSettings = currentRoute === "/settings";
     </main>
   `;
 
+  const skeletonMarkup = `
+    <main class="dashboard-layout">
+      <aside class="crm-sidebar">
+        <div>
+          <div style="width:98px;height:28px;margin:4px 8px 22px;" class="skeleton skeleton-line"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin:0 8px 22px;padding:10px 0 14px;border-bottom:1px solid rgba(255,255,255,0.08);">
+            <div style="width:36px;height:36px;border-radius:50%;" class="skeleton"></div>
+            <div style="display:grid;gap:6px;flex:1;">
+              <div style="width:120px;" class="skeleton skeleton-line"></div>
+              <div style="width:80px;" class="skeleton skeleton-line sm"></div>
+            </div>
+          </div>
+          <div style="display:grid;gap:10px;margin:0 8px;">
+            ${Array.from({ length: 7 })
+              .map(
+                () =>
+                  `<div style="height:44px;border-radius:999px;background:rgba(255,255,255,0.07);"></div>`,
+              )
+              .join("")}
+          </div>
+        </div>
+        <div style="margin:0 8px;display:grid;gap:10px;">
+          <div style="height:44px;border-radius:999px;background:rgba(255,255,255,0.07);"></div>
+          <div style="height:44px;border-radius:999px;background:rgba(255,255,255,0.07);"></div>
+        </div>
+      </aside>
+
+      <section class="dashboard-main">
+        <header class="dashboard-header">
+          <div>
+            <div style="width:160px;margin-bottom:8px;" class="skeleton skeleton-line"></div>
+            <div style="width:240px;" class="skeleton skeleton-line sm"></div>
+          </div>
+          <div style="width:160px;height:44px;border-radius:999px;background:#141518;"></div>
+        </header>
+
+        <section class="stats-grid" aria-hidden="true">
+          ${Array.from({ length: 4 })
+            .map(
+              () => `
+                <div class="stat-card" style="background:#f7f7f7;">
+                  <div style="width:32px;height:32px;border-radius:10px;" class="skeleton"></div>
+                  <div style="display:grid;gap:8px;flex:1;">
+                    <div style="width:90px;height:26px;border-radius:12px;" class="skeleton"></div>
+                    <div style="width:160px;" class="skeleton skeleton-line sm"></div>
+                  </div>
+                </div>
+              `,
+            )
+            .join("")}
+        </section>
+
+        <section class="dashboard-grid-top" aria-hidden="true">
+          <article class="panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="width:140px;" class="skeleton skeleton-line"></div>
+              <div style="width:40px;" class="skeleton skeleton-line sm"></div>
+            </div>
+            <div style="margin-top:10px;width:80px;" class="skeleton skeleton-line sm"></div>
+            <div style="margin-top:14px;height:220px;border-radius:18px;" class="skeleton"></div>
+          </article>
+          <article class="panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="width:160px;" class="skeleton skeleton-line"></div>
+              <div style="width:40px;" class="skeleton skeleton-line sm"></div>
+            </div>
+            <div style="margin-top:10px;width:220px;" class="skeleton skeleton-line sm"></div>
+            <div style="margin-top:14px;height:220px;border-radius:18px;" class="skeleton"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid-bottom" aria-hidden="true">
+          <article class="panel panel-activity">
+            <div style="width:140px;" class="skeleton skeleton-line"></div>
+            <div style="margin-top:14px;display:grid;gap:12px;">
+              ${Array.from({ length: 6 })
+                .map(
+                  () => `
+                    <div>
+                      <div style="width:90px;" class="skeleton skeleton-line sm"></div>
+                      <div style="margin-top:6px;width:100%;" class="skeleton skeleton-line"></div>
+                    </div>
+                  `,
+                )
+                .join("")}
+            </div>
+          </article>
+          <article class="panel panel-campaign">
+            <div style="width:140px;" class="skeleton skeleton-line"></div>
+            <div style="margin-top:14px;height:220px;border-radius:18px;" class="skeleton"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+  `;
+
+  let cleanup = null;
+  const state = { savedCampaign: null, overviewTab: "Summary" };
+
   return {
     mount(target) {
-      target.innerHTML = markup;
+      // Simulate calculating dashboard metrics
+      target.innerHTML = skeletonMarkup;
 
-      const root = target.querySelector(".dashboard-layout");
-      if (!root) return;
+      let cancelled = false;
+      const timerId = window.setTimeout(() => {
+        if (cancelled) return;
+        initReal();
+      }, 650);
 
-      const modal = root.querySelector("[data-create-content-modal]");
-      const createBtn = root.querySelector("[data-create-content-btn]");
-      let lastFocusedEl = null;
-  
+      const initReal = () => {
+        target.innerHTML = markup;
+
+        const root = target.querySelector(".dashboard-layout");
+        if (!root) return;
+
+        const modal = root.querySelector("[data-create-campaign-modal]");
+        const overviewModal = root.querySelector("[data-campaign-overview-modal]");
+        const overviewTitle = root.querySelector("[data-overview-title]");
+        const overviewBody = root.querySelector("[data-overview-body]");
+        const statusPopup = root.querySelector("[data-status-popup]");
+        const statusTitle = root.querySelector("[data-status-title]");
+
+        let lastFocusedEl = null;
+
       const setModalOpen = (open) => {
         if (!modal) return;
+        if (!open) closeCampaignDatePickersIn(root);
         modal.classList.toggle("is-open", open);
         modal.setAttribute("aria-hidden", open ? "false" : "true");
         document.documentElement.classList.toggle("has-modal", open);
@@ -332,9 +560,285 @@ const isSettings = currentRoute === "/settings";
           lastFocusedEl.focus();
         }
       };
-  
+
+      const setOverviewOpen = (open) => {
+        if (!overviewModal) return;
+        overviewModal.classList.toggle("is-open", open);
+        overviewModal.setAttribute("aria-hidden", open ? "false" : "true");
+        document.documentElement.classList.toggle("has-modal", open);
+      };
+
+      const setStatusPopupOpen = (open) => {
+        if (!statusPopup) return;
+        statusPopup.classList.toggle("is-open", open);
+        statusPopup.setAttribute("aria-hidden", open ? "false" : "true");
+      };
+
+      const getFieldValue = (key) => {
+        const el = modal?.querySelector(`[data-field="${key}"]`);
+        if (!el) return "";
+        return String(el.value ?? "").trim();
+      };
+
+      const getDateValue = (key) => {
+        const field = modal?.querySelector(`.crm-field[data-field="${key}"]`);
+        const val = field?.querySelector?.(".crm-datepicker__value")?.value ?? "";
+        return String(val).trim();
+      };
+
+      const clearFormErrors = () => {
+        modal?.querySelectorAll(".is-invalid")?.forEach((el) => el.classList.remove("is-invalid"));
+      };
+
+      const markInvalid = (el) => {
+        if (!el) return;
+        el.classList.add("is-invalid");
+      };
+
+      const validateCampaignForm = () => {
+        clearFormErrors();
+        /** @type {Array<HTMLElement>} */
+        const invalidEls = [];
+
+        const requiredFields = [
+          "campaignName",
+          "channel",
+          "description",
+          "geo",
+          "audienceSegment",
+          "contentType",
+          "purpose",
+        ];
+
+        requiredFields.forEach((key) => {
+          const el = modal?.querySelector(`[data-field="${key}"]`);
+          const val = String(el?.value ?? "").trim();
+          if (!val) {
+            if (el) markInvalid(el);
+            if (el) invalidEls.push(el);
+          }
+        });
+
+        (["startDate", "endDate"]).forEach((key) => {
+          const field = modal?.querySelector(`.crm-field[data-field="${key}"]`);
+          const iso = String(field?.querySelector?.(".crm-datepicker__value")?.value ?? "").trim();
+          if (!iso) {
+            const trigger = field?.querySelector?.(".crm-datepicker__trigger");
+            if (trigger) markInvalid(trigger);
+            if (trigger) invalidEls.push(trigger);
+          }
+        });
+
+        if (invalidEls.length > 0) {
+          invalidEls[0].focus?.();
+          return false;
+        }
+        return true;
+      };
+
+      const generateCampaignId = () => {
+        // Dashboard table doesn't store IDs, but we keep it for saved data.
+        for (let i = 0; i < 50; i++) {
+          const digits = Math.floor(3 + Math.random() * 3); // 3..5
+          const min = 10 ** (digits - 1);
+          const max = 10 ** digits - 1;
+          const n = Math.floor(min + Math.random() * (max - min + 1));
+          return `CMP-${n}`;
+        }
+        return `CMP-${Math.floor(100 + Math.random() * 900)}`;
+      };
+
+      const appendDashboardCampaignRow = (campaign) => {
+        const tbody = root.querySelector(".panel-campaign table.campaign-table tbody");
+        if (!tbody) return;
+        tbody.insertAdjacentHTML(
+          "afterbegin",
+          `<tr>
+            <td>${escapeHtml(campaign.name)}</td>
+            <td>${escapeHtml(campaign.channel)}</td>
+            <td>${escapeHtml(campaign.leads)}</td>
+            <td>${escapeHtml(campaign.start)}</td>
+            <td>${escapeHtml(campaign.end)}</td>
+          </tr>`,
+        );
+      };
+
+      const formatIsoToDisplay = (iso) => {
+        if (!iso) return "";
+        const [y, m, d] = iso.split("-").map((n) => Number(n));
+        if (!y || !m || !d) return "";
+        return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
+      };
+
+      const formatNow = () => {
+        const d = new Date();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        return `Today, ${hh}:${mm}`;
+      };
+
+      const renderOverviewSummary = (c) => {
+        const linkedContentEmpty = !c.linkedContent;
+        return `
+          <div class="crm-overview__section">
+            <div class="crm-overview__section-label">Campaign Summary</div>
+            <div class="crm-overview__summary">
+              <div class="crm-overview__grid">
+                <div class="crm-overview__row"><span>Campaign Name:</span><b>${escapeHtml(c.campaignName || "-")}</b></div>
+                <div class="crm-overview__row"><span>Status:</span><b data-overview-status>${escapeHtml(c.status || "Draft")}</b></div>
+                <div class="crm-overview__row"><span>Channel:</span><b>${escapeHtml(c.channel || "-")}</b></div>
+                <div class="crm-overview__row"><span>Start Date:</span><b>${escapeHtml(formatIsoToDisplay(c.startDate) || "-")}</b></div>
+                <div class="crm-overview__row"><span>End Date:</span><b>${escapeHtml(formatIsoToDisplay(c.endDate) || "-")}</b></div>
+                <div class="crm-overview__row"><span>Last Update:</span><b>just now</b></div>
+              </div>
+              <button type="button" class="crm-overview__change" data-change-status>
+                ${changeStatusIcon()} Change Status
+              </button>
+            </div>
+          </div>
+
+          <div class="crm-overview__divider"></div>
+
+          <div class="crm-overview__section">
+            <div class="crm-overview__section-label">Description</div>
+            <div class="crm-overview__text">${escapeHtml(c.description || "-")}</div>
+          </div>
+
+          <div class="crm-overview__divider"></div>
+
+          <div class="crm-overview__section">
+            <div class="crm-overview__section-label">Linked Content</div>
+            ${
+              linkedContentEmpty
+                ? `<div class="crm-overview__muted">No content linked.</div>`
+                : `
+                  <div class="crm-overview__linked">
+                    <div class="crm-overview__row"><span>Content Name:</span><b>${escapeHtml(c.linkedContent)}</b></div>
+                    <div class="crm-overview__row"><span>Content Type:</span><b>${escapeHtml(c.contentType || "-")}</b></div>
+                    <div class="crm-overview__row"><span>Purpose:</span><b>${escapeHtml(c.purpose || "-")}</b></div>
+                  </div>
+                `
+            }
+          </div>
+        `;
+      };
+
+      const renderOverviewActivity = (c) => {
+        const history = Array.isArray(c.history) ? c.history : [];
+        return `
+          <div class="crm-overview__section">
+            <div class="crm-overview__section-label">Campaign Activity</div>
+
+            <div class="crm-activity-card">
+              <div class="crm-activity-card__head">
+                <div class="crm-activity-card__title">Clicks Over Time</div>
+                <div class="crm-activity-card__select">Daily <span class="crm-activity-card__caret">⌄</span></div>
+              </div>
+              <div class="crm-activity-card__meta">
+                <span>Average number of clicks per day: <b>188</b></span>
+              </div>
+              <div class="crm-activity-legend" aria-hidden="true">
+                <span><i class="crm-dot crm-dot--last"></i> last week</span>
+                <span><i class="crm-dot crm-dot--this"></i> this week</span>
+                <span><i class="crm-dot crm-dot--proj"></i> projected</span>
+              </div>
+              <div class="crm-activity-bars" aria-hidden="true">
+                ${[
+                  ["Mon", 220, 280, 0],
+                  ["Tue", 280, 320, 0],
+                  ["Wed", 250, 360, 0],
+                  ["Thu", 320, 400, 0],
+                  ["Fri", 300, 0, 340],
+                  ["Sat", 190, 0, 280],
+                  ["Sun", 150, 0, 220],
+                ]
+                  .map(
+                    ([day, lastW, thisW, proj]) => `
+                      <div class="crm-activity-bars__col">
+                        <div class="crm-activity-bars__stack">
+                          ${lastW ? `<div class="crm-bar crm-bar--last" style="height:${Math.round(lastW / 4)}px"></div>` : ""}
+                          ${thisW ? `<div class="crm-bar crm-bar--this" style="height:${Math.round(thisW / 4)}px"></div>` : ""}
+                          ${proj ? `<div class="crm-bar crm-bar--proj" style="height:${Math.round(proj / 4)}px"></div>` : ""}
+                        </div>
+                        <div class="crm-activity-bars__day">${escapeHtml(day)}</div>
+                      </div>
+                    `,
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </div>
+
+          <div class="crm-overview__divider"></div>
+
+          <div class="crm-overview__section">
+            <div class="crm-overview__section-label">Campaign History</div>
+            ${
+              history.length === 0
+                ? `<div class="crm-overview__muted">No history yet.</div>`
+                : `<div class="crm-history">
+                    ${history
+                      .slice()
+                      .reverse()
+                      .map(
+                        (h) => `
+                          <div class="crm-history__item">
+                            <div class="crm-history__time">${escapeHtml(h.time)}</div>
+                            <div class="crm-history__text"><b>${escapeHtml(c.campaignName || "Campaign")}</b> ${escapeHtml(h.text)}</div>
+                          </div>
+                        `,
+                      )
+                      .join("")}
+                  </div>`
+            }
+          </div>
+        `;
+      };
+
+      const renderOverviewSettings = (c) => `
+        <div class="crm-overview__section">
+          <div class="crm-overview__section-label">Campaign Settings</div>
+          <div class="crm-overview__linked">
+            <div class="crm-overview__row"><span>Audience:</span><b>${escapeHtml(c.audienceSegment || "-")}</b></div>
+            <div class="crm-overview__row"><span>Schedule:</span><b>${escapeHtml(
+              [formatIsoToDisplay(c.startDate), formatIsoToDisplay(c.endDate)].filter(Boolean).join(" - ") || "-",
+            )}</b></div>
+            <div class="crm-overview__row"><span>Campaign purpose:</span><b>${escapeHtml(c.purpose || "-")}</b></div>
+          </div>
+        </div>
+      `;
+
+      const setActiveTab = (tabName) => {
+        state.overviewTab = tabName;
+        const tabs = overviewModal?.querySelectorAll?.(".crm-tab") ?? [];
+        tabs.forEach((btn) => {
+          const isActive = btn.textContent.trim() === tabName;
+          btn.classList.toggle("is-active", isActive);
+          btn.setAttribute("aria-selected", isActive ? "true" : "false");
+        });
+      };
+
+      const renderOverview = () => {
+        if (!overviewBody || !state.savedCampaign) return;
+        const c = state.savedCampaign;
+        overviewTitle.textContent = c.campaignName || "Campaign";
+        if (state.overviewTab === "Activity") overviewBody.innerHTML = renderOverviewActivity(c);
+        else if (state.overviewTab === "Settings") overviewBody.innerHTML = renderOverviewSettings(c);
+        else overviewBody.innerHTML = renderOverviewSummary(c);
+      };
+
       const onKeyDown = (event) => {
+        if (event.key === "Escape" && statusPopup?.classList?.contains("is-open")) {
+          event.preventDefault();
+          setStatusPopupOpen(false);
+          return;
+        }
         if (event.key !== "Escape") return;
+        if (overviewModal?.classList?.contains("is-open")) {
+          event.preventDefault();
+          setOverviewOpen(false);
+          return;
+        }
         if (!modal || !modal.classList.contains("is-open")) return;
         event.preventDefault();
         setModalOpen(false);
@@ -348,15 +852,123 @@ const isSettings = currentRoute === "/settings";
           return;
         }
 
+        const overviewClose = event.target.closest?.("[data-overview-close]");
+        if (overviewClose && overviewModal?.classList?.contains("is-open")) {
+          event.preventDefault();
+          setOverviewOpen(false);
+          return;
+        }
+
+        const statusClose = event.target.closest?.("[data-status-close]");
+        if (statusClose && statusPopup?.classList?.contains("is-open")) {
+          event.preventDefault();
+          setStatusPopupOpen(false);
+          return;
+        }
+
+        const statusSave = event.target.closest?.("[data-status-save]");
+        if (statusSave) {
+          event.preventDefault();
+          const next = root.querySelector('input[name="campaignStatus"]:checked')?.value ?? "";
+          if (state.savedCampaign && next) {
+            state.savedCampaign.status = String(next);
+            state.savedCampaign.history = Array.isArray(state.savedCampaign.history) ? state.savedCampaign.history : [];
+            state.savedCampaign.history.push({
+              time: formatNow(),
+              text: `was ${String(next).toLowerCase()}`,
+            });
+            renderOverview();
+          }
+          setStatusPopupOpen(false);
+          return;
+        }
+
         const createCampaign = event.target.closest?.("[data-create-campaign-btn]");
         if (createCampaign) {
           event.preventDefault();
           setModalOpen(true);
+          return;
+        }
+
+        const saveCampaign = event.target.closest?.("[data-save-campaign]");
+        if (saveCampaign) {
+          event.preventDefault();
+          if (!validateCampaignForm()) return;
+          const newId = generateCampaignId();
+          state.savedCampaign = {
+            campaignName: getFieldValue("campaignName"),
+            id: newId,
+            channel: getFieldValue("channel"),
+            description: getFieldValue("description"),
+            geo: getFieldValue("geo"),
+            audienceSegment: getFieldValue("audienceSegment"),
+            startDate: getDateValue("startDate"),
+            endDate: getDateValue("endDate"),
+            linkedContent: getFieldValue("linkedContent"),
+            contentType: getFieldValue("contentType"),
+            purpose: getFieldValue("purpose"),
+            status: "Draft",
+            history: [],
+          };
+
+          appendDashboardCampaignRow({
+            name: getFieldValue("campaignName"),
+            channel: getFieldValue("channel"),
+            leads: "—",
+            start: formatIsoToDisplay(getDateValue("startDate")) || "—",
+            end: formatIsoToDisplay(getDateValue("endDate")) || "—",
+          });
+
+          setModalOpen(false);
+          setActiveTab("Summary");
+          renderOverview();
+          setOverviewOpen(true);
+          return;
+        }
+
+        const tabBtn = event.target.closest?.(".crm-tab");
+        if (tabBtn && overviewModal?.contains?.(tabBtn)) {
+          event.preventDefault();
+          setActiveTab(tabBtn.textContent.trim());
+          renderOverview();
+          return;
+        }
+
+        const changeStatus = event.target.closest?.("[data-change-status]");
+        if (changeStatus) {
+          event.preventDefault();
+          const name = state.savedCampaign?.campaignName || "Campaign";
+          if (statusTitle) statusTitle.textContent = `Change Status - ${name}`;
+          setStatusPopupOpen(true);
+          return;
         }
       };
 
-      root.addEventListener("click", onRootClick);
-      document.addEventListener("keydown", onKeyDown);
+        root.addEventListener("click", onRootClick);
+        document.addEventListener("keydown", onKeyDown);
+
+        const disposeDatePickers = mountCampaignDatePickers(root);
+
+        cleanup = () => {
+          cancelled = true;
+          window.clearTimeout(timerId);
+          disposeDatePickers();
+          root.removeEventListener("click", onRootClick);
+          document.removeEventListener("keydown", onKeyDown);
+          document.documentElement.classList.remove("has-modal");
+          cleanup = null;
+        };
+      };
+
+      // If unmounted before timeout, cancel load
+      cleanup = () => {
+        cancelled = true;
+        window.clearTimeout(timerId);
+        cleanup = null;
+      };
+    },
+    unmount() {
+      if (typeof cleanup === "function") cleanup();
     },
   };
 }
@@ -374,4 +986,11 @@ function stripBase(path) {
 
   const rest = path.slice(baseNoSlash.length);
   return rest === "" ? "/" : rest;
+}
+
+function changeStatusIcon() {
+  return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M20 6v6h-6M4 18v-6h6"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M20 12a8 8 0 0 0-14.2-4.9L4 9M4 12a8 8 0 0 0 14.2 4.9L20 15"/>
+  </svg>`;
 }

@@ -1,6 +1,12 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
+import {
+  campaignDatePickerField,
+  closeCampaignDatePickersIn,
+  mountCampaignDatePickers,
+} from "../components/campaignDatePicker.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
+import { loadCampaigns, saveCampaigns, upsertCampaign } from "../utils/crmStore.js";
 
 
 export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
@@ -15,6 +21,8 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
   const isSettings = currentRoute === "/settings";
   const state = {
     openRowId: null,
+    savedCampaign: null,
+    overviewTab: "Summary",
   };
   let cleanup = null;
 
@@ -128,18 +136,34 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
             <h1>Campaign Manager</h1>
             <p>Manage your marketing campaigns</p>
           </div>
-          <button type="button" class="dashboard-header__action" data-create-campaign-btn>+ Create Campaign</button>
+          <div class="campaign-header-right">
+            <div class="campaign-search campaign-search--header">
+              <span class="campaign-search__icon" aria-hidden="true">${searchIcon()}</span>
+              <input
+                class="campaign-search__input"
+                type="search"
+                placeholder="Search by ID or Campaign Name"
+                aria-label="Search campaigns"
+              />
+            </div>
+            <button type="button" class="dashboard-header__action" data-create-campaign-btn>+ Create Campaign</button>
+          </div>
         </header>
 
-        <section class="campaign-toolbar" aria-label="Campaign actions">
-          <div class="campaign-search">
-            <span class="campaign-search__icon" aria-hidden="true">${searchIcon()}</span>
-            <input
-              class="campaign-search__input"
-              type="search"
-              placeholder="Search by ID or Campaign Name"
-              aria-label="Search campaigns"
-            />
+        <section class="campaign-toolbar campaign-toolbar--filters" aria-label="Campaign filters">
+          <div class="campaign-filters">
+            <button type="button" class="filter-pill"><span class="filter-pill__icon">${filterIcon()}</span> Status <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
+            <path d="M10.834 0C10.9439 4.17446e-05 11.0528 0.0221865 11.1543 0.0644531C11.2557 0.106758 11.3484 0.168052 11.4258 0.246094C11.581 0.402224 11.668 0.613844 11.668 0.833984C11.668 1.05412 11.581 1.26574 11.4258 1.42188L7.60059 5.24609C7.13191 5.71419 6.49637 5.97746 5.83398 5.97754C5.17148 5.97754 4.53613 5.71426 4.06738 5.24609L0.242188 1.42188C0.0869784 1.26574 0 1.05414 0 0.833984C3.728e-06 0.613835 0.0869817 0.402226 0.242188 0.246094C0.319596 0.168127 0.412251 0.106707 0.513672 0.0644531C0.61514 0.0222235 0.724077 0 0.833984 0C0.943887 4.17132e-05 1.05284 0.0221864 1.1543 0.0644531C1.25575 0.106758 1.34838 0.168052 1.42578 0.246094L5.24219 4.06348C5.31961 4.14147 5.41223 4.20286 5.51367 4.24512C5.61515 4.28736 5.72406 4.30957 5.83398 4.30957C5.94389 4.30953 6.05285 4.28738 6.1543 4.24512C6.25573 4.20281 6.34839 4.14151 6.42578 4.06348L10.2422 0.246094C10.3196 0.168126 10.4123 0.106707 10.5137 0.0644531C10.6151 0.0222235 10.7241 0 10.834 0Z" fill="#8A8A8A"/>
+          </svg></span></button>
+            <button type="button" class="filter-pill"><span class="filter-pill__icon">${geoIcon()}</span> Geo <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
+            <path d="M10.834 0C10.9439 4.17446e-05 11.0528 0.0221865 11.1543 0.0644531C11.2557 0.106758 11.3484 0.168052 11.4258 0.246094C11.581 0.402224 11.668 0.613844 11.668 0.833984C11.668 1.05412 11.581 1.26574 11.4258 1.42188L7.60059 5.24609C7.13191 5.71419 6.49637 5.97746 5.83398 5.97754C5.17148 5.97754 4.53613 5.71426 4.06738 5.24609L0.242188 1.42188C0.0869784 1.26574 0 1.05414 0 0.833984C3.728e-06 0.613835 0.0869817 0.402226 0.242188 0.246094C0.319596 0.168127 0.412251 0.106707 0.513672 0.0644531C0.61514 0.0222235 0.724077 0 0.833984 0C0.943887 4.17132e-05 1.05284 0.0221864 1.1543 0.0644531C1.25575 0.106758 1.34838 0.168052 1.42578 0.246094L5.24219 4.06348C5.31961 4.14147 5.41223 4.20286 5.51367 4.24512C5.61515 4.28736 5.72406 4.30957 5.83398 4.30957C5.94389 4.30953 6.05285 4.28738 6.1543 4.24512C6.25573 4.20281 6.34839 4.14151 6.42578 4.06348L10.2422 0.246094C10.3196 0.168126 10.4123 0.106707 10.5137 0.0644531C10.6151 0.0222235 10.7241 0 10.834 0Z" fill="#8A8A8A"/>
+          </svg></span></button>
+            <button type="button" class="filter-pill"><span class="filter-pill__icon">${activityIcon()}</span> Activity <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
+            <path d="M10.834 0C10.9439 4.17446e-05 11.0528 0.0221865 11.1543 0.0644531C11.2557 0.106758 11.3484 0.168052 11.4258 0.246094C11.581 0.402224 11.668 0.613844 11.668 0.833984C11.668 1.05412 11.581 1.26574 11.4258 1.42188L7.60059 5.24609C7.13191 5.71419 6.49637 5.97746 5.83398 5.97754C5.17148 5.97754 4.53613 5.71426 4.06738 5.24609L0.242188 1.42188C0.0869784 1.26574 0 1.05414 0 0.833984C3.728e-06 0.613835 0.0869817 0.402226 0.242188 0.246094C0.319596 0.168127 0.412251 0.106707 0.513672 0.0644531C0.61514 0.0222235 0.724077 0 0.833984 0C0.943887 4.17132e-05 1.05284 0.0221864 1.1543 0.0644531C1.25575 0.106758 1.34838 0.168052 1.42578 0.246094L5.24219 4.06348C5.31961 4.14147 5.41223 4.20286 5.51367 4.24512C5.61515 4.28736 5.72406 4.30957 5.83398 4.30957C5.94389 4.30953 6.05285 4.28738 6.1543 4.24512C6.25573 4.20281 6.34839 4.14151 6.42578 4.06348L10.2422 0.246094C10.3196 0.168126 10.4123 0.106707 10.5137 0.0644531C10.6151 0.0222235 10.7241 0 10.834 0Z" fill="#8A8A8A"/>
+          </svg></span></button>
+            <button type="button" class="filter-pill"><span class="filter-pill__icon">${periodIcon()}</span> Period <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
+            <path d="M10.834 0C10.9439 4.17446e-05 11.0528 0.0221865 11.1543 0.0644531C11.2557 0.106758 11.3484 0.168052 11.4258 0.246094C11.581 0.402224 11.668 0.613844 11.668 0.833984C11.668 1.05412 11.581 1.26574 11.4258 1.42188L7.60059 5.24609C7.13191 5.71419 6.49637 5.97746 5.83398 5.97754C5.17148 5.97754 4.53613 5.71426 4.06738 5.24609L0.242188 1.42188C0.0869784 1.26574 0 1.05414 0 0.833984C3.728e-06 0.613835 0.0869817 0.402226 0.242188 0.246094C0.319596 0.168127 0.412251 0.106707 0.513672 0.0644531C0.61514 0.0222235 0.724077 0 0.833984 0C0.943887 4.17132e-05 1.05284 0.0221864 1.1543 0.0644531C1.25575 0.106758 1.34838 0.168052 1.42578 0.246094L5.24219 4.06348C5.31961 4.14147 5.41223 4.20286 5.51367 4.24512C5.61515 4.28736 5.72406 4.30957 5.83398 4.30957C5.94389 4.30953 6.05285 4.28738 6.1543 4.24512C6.25573 4.20281 6.34839 4.14151 6.42578 4.06348L10.2422 0.246094C10.3196 0.168126 10.4123 0.106707 10.5137 0.0644531C10.6151 0.0222235 10.7241 0 10.834 0Z" fill="#8A8A8A"/>
+          </svg></span></button>
           </div>
 
           <div class="campaign-toolbar__actions">
@@ -147,7 +171,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-export-btn>
               <span class="ghost-btn__icon" aria-hidden="true">${exportIcon()}</span>
               Export
             </button>
@@ -209,11 +233,11 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
               <div class="crm-form-grid">
                 <label class="crm-field">
                   <span class="crm-field__label">Campaign Name <span class="crm-field__req">*</span></span>
-                  <input class="crm-field__input" type="text" placeholder="Enter Campaign Name" />
+                  <input class="crm-field__input" type="text" placeholder="Enter Campaign Name" data-field="campaignName" />
                 </label>
                 <label class="crm-field">
                   <span class="crm-field__label">Channel <span class="crm-field__req">*</span></span>
-                  <select class="crm-field__input">
+                  <select class="crm-field__input" data-field="channel">
                     <option value="" selected disabled>Select Channel</option>
                     <option>Web</option>
                     <option>Email</option>
@@ -225,7 +249,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
                 </label>
                 <label class="crm-field crm-field--full">
                   <span class="crm-field__label">Description</span>
-                  <input class="crm-field__input" type="text" placeholder="Enter description" />
+                  <input class="crm-field__input" type="text" placeholder="Enter description" data-field="description" />
                 </label>
               </div>
             </div>
@@ -237,7 +261,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
               <div class="crm-form-grid">
                 <label class="crm-field">
                   <span class="crm-field__label">Geo</span>
-                  <select class="crm-field__input">
+                  <select class="crm-field__input" data-field="geo">
                     <option value="" selected disabled>Select Geo</option>
                     <option>Global</option>
                     <option>EU</option>
@@ -248,7 +272,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
                 </label>
                 <label class="crm-field">
                   <span class="crm-field__label">Audience Segment</span>
-                  <select class="crm-field__input">
+                  <select class="crm-field__input" data-field="audienceSegment">
                     <option value="" selected disabled>Select Segment</option>
                     <option>New Users</option>
                     <option>Returning Users</option>
@@ -264,14 +288,18 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
             <div class="crm-modal__section">
               <div class="crm-modal__section-label">Campaign Schedule</div>
               <div class="crm-form-grid">
-                <label class="crm-field">
-                  <span class="crm-field__label">Start Date <span class="crm-field__req">*</span></span>
-                  <input class="crm-field__input" type="date" />
-                </label>
-                <label class="crm-field">
-                  <span class="crm-field__label">End Date</span>
-                  <input class="crm-field__input" type="date" />
-                </label>
+                ${campaignDatePickerField({
+                  labelText: "Start Date",
+                  placeholder: "Select Start Date",
+                  required: true,
+                  fieldKey: "startDate",
+                })}
+                ${campaignDatePickerField({
+                  labelText: "End Date",
+                  placeholder: "Select End Date",
+                  required: false,
+                  fieldKey: "endDate",
+                })}
               </div>
             </div>
 
@@ -282,7 +310,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
               <div class="crm-form-grid">
                 <label class="crm-field crm-field--full">
                   <span class="crm-field__label">Linked Content</span>
-                  <select class="crm-field__input">
+                  <select class="crm-field__input" data-field="linkedContent">
                     <option value="" selected disabled>Select Content</option>
                     <option>Homepage banner – Spring</option>
                     <option>Summer Engagement Boost</option>
@@ -293,11 +321,82 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
               </div>
             </div>
 
+            <div class="crm-modal__divider"></div>
+
+            <div class="crm-modal__section">
+              <div class="crm-form-grid">
+                <label class="crm-field">
+                  <span class="crm-field__label">Content Type</span>
+                  <input class="crm-field__input" type="text" placeholder="Banner" data-field="contentType" />
+                </label>
+                <label class="crm-field">
+                  <span class="crm-field__label">Purpose</span>
+                  <select class="crm-field__input" data-field="purpose">
+                    <option value="" selected disabled>Select Purpose</option>
+                    <option>Retargeting</option>
+                    <option>Awareness</option>
+                    <option>Acquisition</option>
+                    <option>Engagement</option>
+                    <option>Retention</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
             <div class="crm-modal__footer">
               <div class="crm-modal__actions">
                 <button type="button" class="crm-btn crm-btn--link" data-modal-close>Cancel</button>
-                <button type="button" class="crm-btn crm-btn--disabled" aria-disabled="true">Save Campaign</button>
+                <button type="button" class="crm-btn crm-btn--primary" data-save-campaign>Save Campaign</button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="crm-modal" data-campaign-overview-modal aria-hidden="true">
+          <div class="crm-modal__backdrop" data-overview-close></div>
+          <div class="crm-modal__dialog crm-overview" role="dialog" aria-modal="true" aria-labelledby="campaign-overview-title">
+            <div class="crm-modal__head">
+              <div>
+                <h2 class="crm-modal__title" id="campaign-overview-title" data-overview-title>Campaign</h2>
+                <p class="crm-modal__subtitle">Campaign overview and configuration</p>
+              </div>
+              <button type="button" class="crm-modal__close" aria-label="Close" data-overview-close>×</button>
+            </div>
+
+            <div class="crm-overview__scroll">
+              <div class="crm-modal__section">
+                <div class="crm-tabs" role="tablist" aria-label="Campaign tabs">
+                  <button type="button" class="crm-tab is-active" role="tab" aria-selected="true">Summary</button>
+                  <button type="button" class="crm-tab" role="tab" aria-selected="false">Activity</button>
+                  <button type="button" class="crm-tab" role="tab" aria-selected="false">Settings</button>
+                </div>
+              </div>
+
+              <div class="crm-modal__section" data-overview-body></div>
+            </div>
+
+            <div class="crm-modal__footer crm-overview__footer">
+              <div class="crm-overview__footer-actions">
+                <button type="button" class="crm-btn crm-btn--link crm-overview__ghost" data-duplicate-campaign>Duplicate</button>
+                <button type="button" class="crm-btn crm-btn--primary" data-edit-campaign>Edit Campaign</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="crm-popup" data-status-popup aria-hidden="true">
+          <div class="crm-popup__backdrop" data-status-close></div>
+          <div class="crm-popup__dialog" role="dialog" aria-modal="true" aria-labelledby="status-popup-title">
+            <button type="button" class="crm-popup__close" aria-label="Close" data-status-close>×</button>
+            <h3 class="crm-popup__title" id="status-popup-title" data-status-title>Change Status</h3>
+            <div class="crm-popup__options" role="radiogroup" aria-label="Status options">
+              <label class="crm-popup__opt"><input type="radio" name="campaignStatus" value="Paused" /> <span class="crm-pill crm-pill--paused">Paused</span></label>
+              <label class="crm-popup__opt"><input type="radio" name="campaignStatus" value="Terminated" /> <span class="crm-pill crm-pill--terminated">Terminated</span></label>
+              <label class="crm-popup__opt"><input type="radio" name="campaignStatus" value="Archived" /> <span class="crm-pill crm-pill--archived">Archived</span></label>
+            </div>
+            <div class="crm-popup__actions">
+              <button type="button" class="crm-btn crm-btn--outline" data-status-close>Cancel</button>
+              <button type="button" class="crm-btn crm-btn--primary" data-status-save>Save</button>
             </div>
           </div>
         </div>
@@ -306,6 +405,32 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
   `;
 
   function mount(target) {
+    // Seed localStorage once so Launch Calendar can use it.
+    if (loadCampaigns().length === 0) {
+      const parseDmy = (s) => {
+        const m = String(s || "").trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+        if (!m) return "";
+        const [, dd, mm, yyyy] = m;
+        return `${yyyy}-${mm}-${dd}`;
+      };
+      const seeded = rows.map((r) => ({
+        id: r.id,
+        campaignName: r.name,
+        status: r.status,
+        geo: r.geo,
+        channel: "",
+        description: "",
+        audienceSegment: "",
+        startDate: parseDmy(r.created),
+        endDate: parseDmy(r.end),
+        linkedContent: "",
+        contentType: "",
+        purpose: "",
+        history: [],
+      }));
+      saveCampaigns(seeded);
+    }
+
     target.innerHTML = markup;
 
     const root = target.querySelector(".dashboard-layout");
@@ -313,6 +438,15 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
 
     const modal = root.querySelector("[data-create-campaign-modal]");
     const createBtn = root.querySelector("[data-create-campaign-btn]");
+    const saveBtn = root.querySelector("[data-save-campaign]");
+
+    const overviewModal = root.querySelector("[data-campaign-overview-modal]");
+    const overviewTitle = root.querySelector("[data-overview-title]");
+    const overviewBody = root.querySelector("[data-overview-body]");
+
+    const statusPopup = root.querySelector("[data-status-popup]");
+    const statusTitle = root.querySelector("[data-status-title]");
+
     let lastFocusedEl = null;
 
     const filterBtn = root.querySelector("[data-filter-btn]");
@@ -322,6 +456,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
 
     const setModalOpen = (open) => {
       if (!modal) return;
+      if (!open) closeCampaignDatePickersIn(root);
       modal.classList.toggle("is-open", open);
       modal.setAttribute("aria-hidden", open ? "false" : "true");
       document.documentElement.classList.toggle("has-modal", open);
@@ -332,6 +467,307 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       } else if (lastFocusedEl && typeof lastFocusedEl.focus === "function") {
         lastFocusedEl.focus();
       }
+    };
+
+    const setOverviewOpen = (open) => {
+      if (!overviewModal) return;
+      overviewModal.classList.toggle("is-open", open);
+      overviewModal.setAttribute("aria-hidden", open ? "false" : "true");
+      document.documentElement.classList.toggle("has-modal", open);
+    };
+
+    const setStatusPopupOpen = (open) => {
+      if (!statusPopup) return;
+      statusPopup.classList.toggle("is-open", open);
+      statusPopup.setAttribute("aria-hidden", open ? "false" : "true");
+    };
+
+    const getFieldValue = (key) => {
+      const el = modal?.querySelector(`[data-field="${key}"]`);
+      if (!el) return "";
+      return String(el.value ?? "").trim();
+    };
+
+    const getDateValue = (key) => {
+      const field = modal?.querySelector(`.crm-field[data-field="${key}"]`);
+      const val = field?.querySelector?.(".crm-datepicker__value")?.value ?? "";
+      return String(val).trim();
+    };
+
+    const clearFormErrors = () => {
+      modal?.querySelectorAll(".is-invalid")?.forEach((el) => el.classList.remove("is-invalid"));
+    };
+
+    const markInvalid = (el) => {
+      if (!el) return;
+      el.classList.add("is-invalid");
+    };
+
+    const validateCampaignForm = () => {
+      clearFormErrors();
+      /** @type {Array<HTMLElement>} */
+      const invalidEls = [];
+
+      const requiredFields = [
+        "campaignName",
+        "channel",
+        "description",
+        "geo",
+        "audienceSegment",
+        "contentType",
+        "purpose",
+      ];
+
+      requiredFields.forEach((key) => {
+        const el = modal?.querySelector(`[data-field="${key}"]`);
+        const val = String(el?.value ?? "").trim();
+        if (!val) {
+          if (el) markInvalid(el);
+          if (el) invalidEls.push(el);
+        }
+      });
+
+      (["startDate", "endDate"]).forEach((key) => {
+        const field = modal?.querySelector(`.crm-field[data-field="${key}"]`);
+        const iso = String(field?.querySelector?.(".crm-datepicker__value")?.value ?? "").trim();
+        if (!iso) {
+          const trigger = field?.querySelector?.(".crm-datepicker__trigger");
+          if (trigger) markInvalid(trigger);
+          if (trigger) invalidEls.push(trigger);
+        }
+      });
+
+      if (invalidEls.length > 0) {
+        invalidEls[0].focus?.();
+        return false;
+      }
+      return true;
+    };
+
+    const generateCampaignId = () => {
+      const existing = new Set(
+        Array.from(root.querySelectorAll("[data-row-menu]"))
+          .map((el) => String(el.getAttribute("data-row-menu") ?? "").trim())
+          .filter(Boolean),
+      );
+
+      for (let i = 0; i < 50; i++) {
+        const digits = Math.floor(3 + Math.random() * 3); // 3..5
+        const min = 10 ** (digits - 1);
+        const max = 10 ** digits - 1;
+        const n = Math.floor(min + Math.random() * (max - min + 1));
+        const id = `CMP-${n}`;
+        if (!existing.has(id)) return id;
+      }
+
+      return `CMP-${Math.floor(100 + Math.random() * 900)}`;
+    };
+
+    const appendCampaignRow = (campaign) => {
+      const tbody = root.querySelector("table.campaign-table--manager tbody");
+      if (!tbody) return;
+      tbody.insertAdjacentHTML("beforeend", renderRow(campaign));
+    };
+
+    const csvEscape = (v) => {
+      const s = String(v ?? "");
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const exportCampaignManagerCsv = () => {
+      const table = root.querySelector("table.campaign-table--manager");
+      if (!table) return;
+
+      const headers = Array.from(table.querySelectorAll("thead th"))
+        .slice(0, 7)
+        .map((th) => th.textContent.trim() || "");
+
+      const rows = Array.from(table.querySelectorAll("tbody tr"))
+        .filter((tr) => !tr.hasAttribute("hidden"))
+        .map((tr) => {
+          const tds = Array.from(tr.querySelectorAll("td")).slice(0, 7);
+          return tds.map((td) => td.textContent.trim());
+        });
+
+      const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(",")).join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "campaigns.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    const formatIsoToDisplay = (iso) => {
+      if (!iso) return "";
+      const [y, m, d] = iso.split("-").map((n) => Number(n));
+      if (!y || !m || !d) return "";
+      return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
+    };
+
+    const formatNow = () => {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `Today, ${hh}:${mm}`;
+    };
+
+    const renderOverviewSummary = (c) => {
+      if (!overviewBody || !state.savedCampaign) return;
+      const linkedContentEmpty = !c.linkedContent;
+      overviewTitle.textContent = c.campaignName || "Campaign";
+
+      return `
+        <div class="crm-overview__section">
+          <div class="crm-overview__section-label">Campaign Summary</div>
+          <div class="crm-overview__summary">
+            <div class="crm-overview__grid">
+              <div class="crm-overview__row"><span>Campaign Name:</span><b>${escapeHtml(c.campaignName || "-")}</b></div>
+              <div class="crm-overview__row"><span>Status:</span><b data-overview-status>${escapeHtml(c.status || "Draft")}</b></div>
+              <div class="crm-overview__row"><span>Channel:</span><b>${escapeHtml(c.channel || "-")}</b></div>
+              <div class="crm-overview__row"><span>Start Date:</span><b>${escapeHtml(formatIsoToDisplay(c.startDate) || "-")}</b></div>
+              <div class="crm-overview__row"><span>End Date:</span><b>${escapeHtml(formatIsoToDisplay(c.endDate) || "-")}</b></div>
+              <div class="crm-overview__row"><span>Last Update:</span><b>just now</b></div>
+            </div>
+            <button type="button" class="crm-overview__change" data-change-status>
+              ${changeStatusIcon()} Change Status
+            </button>
+          </div>
+        </div>
+
+        <div class="crm-overview__divider"></div>
+
+        <div class="crm-overview__section">
+          <div class="crm-overview__section-label">Description</div>
+          <div class="crm-overview__text">${escapeHtml(c.description || "-")}</div>
+        </div>
+
+        <div class="crm-overview__divider"></div>
+
+        <div class="crm-overview__section">
+          <div class="crm-overview__section-label">Linked Content</div>
+          ${
+            linkedContentEmpty
+              ? `<div class="crm-overview__muted">No content linked.</div>`
+              : `
+                <div class="crm-overview__linked">
+                  <div class="crm-overview__row"><span>Content Name:</span><b>${escapeHtml(c.linkedContent)}</b></div>
+                  <div class="crm-overview__row"><span>Content Type:</span><b>${escapeHtml(c.contentType || "-")}</b></div>
+                  <div class="crm-overview__row"><span>Purpose:</span><b>${escapeHtml(c.purpose || "-")}</b></div>
+                </div>
+              `
+          }
+        </div>
+      `;
+    };
+
+    const renderOverviewActivity = (c) => {
+      const history = Array.isArray(c.history) ? c.history : [];
+      const last = history[history.length - 1];
+      return `
+        <div class="crm-overview__section">
+          <div class="crm-overview__section-label">Campaign Activity</div>
+
+          <div class="crm-activity-card">
+            <div class="crm-activity-card__head">
+              <div class="crm-activity-card__title">Clicks Over Time</div>
+              <div class="crm-activity-card__select">Daily <span class="crm-activity-card__caret">⌄</span></div>
+            </div>
+            <div class="crm-activity-card__meta">
+              <span>Average number of clicks per day: <b>188</b></span>
+            </div>
+            <div class="crm-activity-legend" aria-hidden="true">
+              <span><i class="crm-dot crm-dot--last"></i> last week</span>
+              <span><i class="crm-dot crm-dot--this"></i> this week</span>
+              <span><i class="crm-dot crm-dot--proj"></i> projected</span>
+            </div>
+            <div class="crm-activity-bars" aria-hidden="true">
+              ${[
+                ["Mon", 220, 280, 0],
+                ["Tue", 280, 320, 0],
+                ["Wed", 250, 360, 0],
+                ["Thu", 320, 400, 0],
+                ["Fri", 300, 0, 340],
+                ["Sat", 190, 0, 280],
+                ["Sun", 150, 0, 220],
+              ]
+                .map(
+                  ([day, lastW, thisW, proj]) => `
+                    <div class="crm-activity-bars__col">
+                      <div class="crm-activity-bars__stack">
+                        ${lastW ? `<div class="crm-bar crm-bar--last" style="height:${Math.round(lastW / 4)}px"></div>` : ""}
+                        ${thisW ? `<div class="crm-bar crm-bar--this" style="height:${Math.round(thisW / 4)}px"></div>` : ""}
+                        ${proj ? `<div class="crm-bar crm-bar--proj" style="height:${Math.round(proj / 4)}px"></div>` : ""}
+                      </div>
+                      <div class="crm-activity-bars__day">${escapeHtml(day)}</div>
+                    </div>
+                  `,
+                )
+                .join("")}
+            </div>
+          </div>
+        </div>
+
+        <div class="crm-overview__divider"></div>
+
+        <div class="crm-overview__section">
+          <div class="crm-overview__section-label">Campaign History</div>
+          ${
+            history.length === 0
+              ? `<div class="crm-overview__muted">No history yet.</div>`
+              : `<div class="crm-history">
+                  ${history
+                    .slice()
+                    .reverse()
+                    .map(
+                      (h) => `
+                        <div class="crm-history__item">
+                          <div class="crm-history__time">${escapeHtml(h.time)}</div>
+                          <div class="crm-history__text"><b>${escapeHtml(c.campaignName || "Campaign")}</b> ${escapeHtml(h.text)}</div>
+                        </div>
+                      `,
+                    )
+                    .join("")}
+                </div>`
+          }
+        </div>
+      `;
+    };
+
+    const renderOverviewSettings = (c) => `
+      <div class="crm-overview__section">
+        <div class="crm-overview__section-label">Campaign Settings</div>
+        <div class="crm-overview__linked">
+          <div class="crm-overview__row"><span>Audience:</span><b>${escapeHtml(c.audienceSegment || "-")}</b></div>
+          <div class="crm-overview__row"><span>Schedule:</span><b>${escapeHtml(
+            [formatIsoToDisplay(c.startDate), formatIsoToDisplay(c.endDate)].filter(Boolean).join(" - ") || "-",
+          )}</b></div>
+          <div class="crm-overview__row"><span>Campaign purpose:</span><b>${escapeHtml(c.purpose || "-")}</b></div>
+        </div>
+      </div>
+    `;
+
+    const setActiveTab = (tabName) => {
+      state.overviewTab = tabName;
+      const tabs = overviewModal?.querySelectorAll?.(".crm-tab") ?? [];
+      tabs.forEach((btn) => {
+        const isActive = btn.textContent.trim() === tabName;
+        btn.classList.toggle("is-active", isActive);
+        btn.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+    };
+
+    const renderOverview = () => {
+      if (!overviewBody || !state.savedCampaign) return;
+      const c = state.savedCampaign;
+      overviewTitle.textContent = c.campaignName || "Campaign";
+      if (state.overviewTab === "Activity") overviewBody.innerHTML = renderOverviewActivity(c);
+      else if (state.overviewTab === "Settings") overviewBody.innerHTML = renderOverviewSettings(c);
+      else overviewBody.innerHTML = renderOverviewSummary(c);
     };
 
     const applyPrefixFilter = (prefixRaw) => {
@@ -355,12 +791,22 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     };
 
     const onKeyDown = (event) => {
+      if (event.key === "Escape" && statusPopup?.classList?.contains("is-open")) {
+        event.preventDefault();
+        setStatusPopupOpen(false);
+        return;
+      }
       if (event.key === "Escape" && filterPopover?.classList?.contains("is-open")) {
         event.preventDefault();
         setFilterOpen(false);
         return;
       }
       if (event.key !== "Escape") return;
+      if (overviewModal?.classList?.contains("is-open")) {
+        event.preventDefault();
+        setOverviewOpen(false);
+        return;
+      }
       if (!modal || !modal.classList.contains("is-open")) return;
       event.preventDefault();
       setModalOpen(false);
@@ -379,10 +825,48 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     };
 
     const onRootClick = (event) => {
+      const exportBtn = event.target.closest?.("[data-export-btn]");
+      if (exportBtn) {
+        event.preventDefault();
+        exportCampaignManagerCsv();
+        return;
+      }
+
       const modalClose = event.target.closest?.("[data-modal-close]");
       if (modalClose && modal && modal.classList.contains("is-open")) {
         event.preventDefault();
         setModalOpen(false);
+        return;
+      }
+
+      const overviewClose = event.target.closest?.("[data-overview-close]");
+      if (overviewClose && overviewModal?.classList?.contains("is-open")) {
+        event.preventDefault();
+        setOverviewOpen(false);
+        return;
+      }
+
+      const statusClose = event.target.closest?.("[data-status-close]");
+      if (statusClose && statusPopup?.classList?.contains("is-open")) {
+        event.preventDefault();
+        setStatusPopupOpen(false);
+        return;
+      }
+
+      const statusSave = event.target.closest?.("[data-status-save]");
+      if (statusSave) {
+        event.preventDefault();
+        const next = root.querySelector('input[name="campaignStatus"]:checked')?.value ?? "";
+        if (state.savedCampaign && next) {
+          state.savedCampaign.status = String(next);
+          state.savedCampaign.history = Array.isArray(state.savedCampaign.history) ? state.savedCampaign.history : [];
+          state.savedCampaign.history.push({
+            time: formatNow(),
+            text: `was ${String(next).toLowerCase()}`,
+          });
+          renderOverview();
+        }
+        setStatusPopupOpen(false);
         return;
       }
 
@@ -413,6 +897,68 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       if (createCampaign) {
         event.preventDefault();
         setModalOpen(true);
+        return;
+      }
+
+      const saveCampaign = event.target.closest?.("[data-save-campaign]");
+      if (saveCampaign) {
+        event.preventDefault();
+        if (!validateCampaignForm()) return;
+        const campaignName = getFieldValue("campaignName");
+        const linkedContent = getFieldValue("linkedContent");
+        const newId = generateCampaignId();
+        state.savedCampaign = {
+          campaignName,
+          id: newId,
+          channel: getFieldValue("channel"),
+          description: getFieldValue("description"),
+          geo: getFieldValue("geo"),
+          audienceSegment: getFieldValue("audienceSegment"),
+          startDate: getDateValue("startDate"),
+          endDate: getDateValue("endDate"),
+          linkedContent,
+          contentType: getFieldValue("contentType"),
+          purpose: getFieldValue("purpose"),
+          status: "Draft",
+          history: [],
+        };
+
+        upsertCampaign(state.savedCampaign);
+
+        appendCampaignRow({
+          name: campaignName,
+          id: newId,
+          status: "Draft",
+          geo: getFieldValue("geo"),
+          conv: "—",
+          created: formatIsoToDisplay(getDateValue("startDate")) || "—",
+          end: formatIsoToDisplay(getDateValue("endDate")) || "—",
+        });
+
+        setModalOpen(false);
+        setActiveTab("Summary");
+        renderOverview();
+        setOverviewOpen(true);
+        return;
+      }
+
+      const tabBtn = event.target.closest?.(".crm-tab");
+      if (tabBtn && overviewModal?.contains?.(tabBtn)) {
+        event.preventDefault();
+        setActiveTab(tabBtn.textContent.trim());
+        renderOverview();
+        return;
+      }
+
+      const changeStatus = event.target.closest?.("[data-change-status]");
+      if (changeStatus) {
+        event.preventDefault();
+        const name = state.savedCampaign?.campaignName || "Campaign";
+        if (statusTitle) statusTitle.textContent = `Change Status - ${name}`;
+        const current = String(state.savedCampaign?.status || "Draft");
+        const checked = root.querySelector(`input[name="campaignStatus"][value="${cssEscape(current)}"]`);
+        if (checked) checked.checked = true;
+        setStatusPopupOpen(true);
         return;
       }
 
@@ -461,7 +1007,10 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       { capture: true },
     );
 
+    const disposeDatePickers = mountCampaignDatePickers(root);
+
     cleanup = () => {
+      disposeDatePickers();
       root.removeEventListener("click", onRootClick);
       document.removeEventListener("keydown", onKeyDown);
       filterInput?.removeEventListener("input", onFilterInput);
@@ -542,6 +1091,18 @@ function exportIcon() {
 </svg>`;
 }
 
+function geoIcon() {
+  return `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.6" d="M12 22s7-5.5 7-12a7 7 0 1 0-14 0c0 6.5 7 12 7 12Z"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M12 13.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/></svg>`;
+}
+
+function activityIcon() {
+  return `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.6" d="M4 12a8 8 0 1 0 16 0"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M12 4v8l5 3"/></svg>`;
+}
+
+function periodIcon() {
+  return `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.6" d="M7 3v3M17 3v3M4 9h16"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg>`;
+}
+
 function sortIcon() {
   return `<svg viewBox="0 0 24 24" focusable="false"><path d="M7 10l5-5 5 5H7zm10 4l-5 5-5-5h10z"/></svg>`;
 }
@@ -583,6 +1144,13 @@ function menuDuplicateIcon() {
     </clipPath>
   </defs>
 </svg>`;
+}
+
+function changeStatusIcon() {
+  return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M20 6v6h-6M4 18v-6h6"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M20 12a8 8 0 0 0-14.2-4.9L4 9M4 12a8 8 0 0 0 14.2 4.9L20 15"/>
+  </svg>`;
 }
 
 
