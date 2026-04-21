@@ -167,7 +167,7 @@ line-height: 22px; /* 137.5% */
   font-size: 0.95rem;
   padding: 14px 20px;
   cursor: pointer;
-  width: 100%;
+  /* width: 100%; */
 }
 
 /* Modal (Create Content) */
