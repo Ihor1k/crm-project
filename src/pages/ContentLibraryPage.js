@@ -2,6 +2,8 @@ import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
 import { deleteContentItem, loadContentItems, saveContentItems, upsertContentItem } from "../utils/crmStore.js";
+import { createTablePagination, paginationBarHtml } from "../utils/tablePagination.js";
+import { normalizeSearchQuery, rowMatchesSearch } from "../utils/searchFilter.js";
 import contentLibraryImg1 from "../images/content-library-1.png";
 import contentLibraryImg2 from "../images/content-library-2.png";
 import contentLibraryImg3 from "../images/content-library-3.png";
@@ -173,32 +175,9 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
                   <th class="campaign-table__actions-head" aria-label="Actions"></th>
                 </tr>
               </thead>
-              <tbody>
-                ${(() => {
-                  const stored = loadContentItems();
-                  if (stored.length > 0) return stored.map(renderRow).join("");
-                  // Seed localStorage once so Launch Calendar + persistence work.
-                  saveContentItems(rows.map((r) => ({ ...r, updatedAt: Date.now() })));
-                  return rows.map(renderRow).join("");
-                })()}
-              </tbody>
+              <tbody></tbody>
             </table>
-            <div class="table-pagination" aria-label="Pagination">
-              <div class="table-pagination__left">Total campaigns: <span class="bold">87</span></div>
-              <div class="table-pagination__center">
-                <span class="table-pagination__muted">Prev</span>
-                <span class="table-pagination__page is-active">1</span>
-                <span class="table-pagination__page">2</span>
-                <span class="table-pagination__muted">…</span>
-                <span class="table-pagination__page">7</span>
-                <span class="table-pagination__muted">Next</span>
-              </div>
-              <div class="table-pagination__right">
-                <span class="table-pagination__muted">Go to page</span>
-                <span class="table-pagination__input" aria-hidden="true"></span>
-                <span class="table-pagination__muted">›</span>
-              </div>
-            </div>
+            ${paginationBarHtml("Total campaigns:")}
           </div>
         </section>
 
@@ -410,6 +389,42 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     const filterPopover = root.querySelector("[data-filter-popover]");
     const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
 
+    let filterPrefix = "";
+    let searchQuery = "";
+    const searchInput = root.querySelector(".campaign-search__input");
+    /** @type {null | ReturnType<typeof createTablePagination>} */
+    let paginationApi = null;
+    const refreshContentTable = (opts) => paginationApi?.refresh(opts);
+
+    const getFilteredContentItems = () => {
+      const q = normalizeSearchQuery(searchQuery);
+      return loadContentItems().filter((it) => {
+        const n = String(it?.name ?? "").toLowerCase();
+        if (filterPrefix && !n.startsWith(filterPrefix)) return false;
+        return rowMatchesSearch(q, [it.name, it.type, it.status, it.id, it.description]);
+      });
+    };
+
+    const applyPrefixFilter = (prefixRaw) => {
+      filterPrefix = String(prefixRaw ?? "").trim().toLowerCase();
+      refreshContentTable({ resetPage: true });
+    };
+
+    paginationApi = createTablePagination({
+      root,
+      tableSelector: "table.campaign-table--manager",
+      getItems: () => getFilteredContentItems(),
+      renderItemHtml: (item) => renderRow(item),
+      totalLabelText: "Total campaigns:",
+    });
+    refreshContentTable();
+
+    const onSearchInput = () => {
+      searchQuery = String(searchInput?.value ?? "");
+      refreshContentTable({ resetPage: true });
+    };
+    searchInput?.addEventListener("input", onSearchInput);
+
     const setModalOpen = (open) => {
       if (!modal) return;
       modal.classList.toggle("is-open", open);
@@ -487,10 +502,8 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
 
     const generateContentId = () => `CL-${Math.floor(100 + Math.random() * 90000)}`;
 
-    const appendContentRow = (content) => {
-      const tbody = root.querySelector("table.campaign-table tbody");
-      if (!tbody) return;
-      tbody.insertAdjacentHTML("afterbegin", renderRow(content));
+    const appendContentRow = () => {
+      refreshContentTable({ resetPage: true });
     };
 
     const csvEscape = (v) => {
@@ -500,20 +513,8 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     };
 
     const exportContentLibraryCsv = () => {
-      const table = root.querySelector("table.campaign-table--manager");
-      if (!table) return;
-
       const headers = ["Content Name", "Type", "Status"];
-      const rows = Array.from(table.querySelectorAll("tbody tr"))
-        .filter((tr) => !tr.hasAttribute("hidden"))
-        .map((tr) => {
-          const tds = Array.from(tr.querySelectorAll("td"));
-          return [
-            tds[1]?.textContent?.trim() ?? "",
-            tds[2]?.textContent?.trim() ?? "",
-            tds[3]?.textContent?.trim() ?? "",
-          ];
-        });
+      const rows = getFilteredContentItems().map((it) => [it.name, it.type, it.status]);
 
       const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(",")).join("\r\n");
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -527,25 +528,8 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
       URL.revokeObjectURL(url);
     };
 
-    const updateContentRow = (content) => {
-      const dotsBtn = root.querySelector(`button[data-row-dots="${cssEscape(content.id)}"]`);
-      const tr = dotsBtn?.closest?.("tr");
-      if (!tr) return;
-      tr.setAttribute("data-content-name", content.name);
-      const img = tr.querySelector('img[data-thumb-preview]');
-      if (img) {
-        img.setAttribute("src", content.thumb);
-        img.setAttribute("data-thumb-preview", content.thumb);
-        img.setAttribute("alt", `${content.name} preview`);
-      }
-      if (tr.children?.[1]) tr.children[1].textContent = content.name;
-      if (tr.children?.[2]) tr.children[2].textContent = content.type;
-      const badge = tr.querySelector(".status-badge");
-      if (badge) {
-        const statusKey = content.status.toLowerCase() === "active" ? "running" : "archived";
-        badge.className = `status-badge status-badge--${statusKey}`;
-        badge.textContent = content.status;
-      }
+    const updateContentRow = () => {
+      refreshContentTable();
     };
 
     const resetForm = () => {
@@ -619,15 +603,6 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     const onDragOver = (event) => {
       if (!modal || !modal.classList.contains("is-open")) return;
       event.preventDefault();
-    };
-
-    const applyPrefixFilter = (prefixRaw) => {
-      const prefix = String(prefixRaw ?? "").trim().toLowerCase();
-      root.querySelectorAll("tbody tr[data-content-name]").forEach((tr) => {
-        const name = String(tr.getAttribute("data-content-name") ?? "").toLowerCase();
-        const show = prefix === "" ? true : name.startsWith(prefix);
-        tr.toggleAttribute("hidden", !show);
-      });
     };
 
     const setFilterOpen = (open) => {
@@ -725,11 +700,9 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
         event.preventDefault();
         const rowId = deleteRowBtn.getAttribute("data-row-delete");
         if (!rowId) return;
-        const dotsBtn = root.querySelector(`button[data-row-dots="${cssEscape(rowId)}"]`);
-        const tr = dotsBtn?.closest?.("tr");
-        if (tr) tr.remove();
         contentStore.delete(rowId);
         deleteContentItem(rowId);
+        refreshContentTable();
         closeMenu();
         return;
       }
@@ -766,8 +739,8 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
         state.savedContent = newItem;
         contentStore.set(id, newItem);
         upsertContentItem({ ...newItem, updatedAt: Date.now() });
-        if (editingRowId) updateContentRow(newItem);
-        else appendContentRow(newItem);
+        if (editingRowId) updateContentRow();
+        else appendContentRow();
         setModalOpen(false);
         return;
       }
@@ -820,6 +793,9 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     urlInput?.addEventListener("input", onUrlInput);
 
     cleanup = () => {
+      searchInput?.removeEventListener("input", onSearchInput);
+      paginationApi?.destroy();
+      paginationApi = null;
       root.removeEventListener("click", onRootClick);
       root.removeEventListener("mouseover", onThumbMouseOver);
       root.removeEventListener("mousemove", onThumbMouseMove);

@@ -108,13 +108,29 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
           </div>
 
           <div class="campaign-toolbar__actions">
-            <button type="button" class="ghost-btn" aria-label="Change calendar view">
-              <span class="ghost-btn__icon" aria-hidden="true">${viewSwitchIcon()}</span>
-            </button>
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-filter-btn aria-haspopup="dialog" aria-expanded="false">
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
+            <div class="crm-filter" data-filter-popover aria-hidden="true">
+              <div class="crm-filter__title">Filter</div>
+              <label class="crm-filter__field">
+                <span class="crm-filter__label">Event title starts with</span>
+                <input class="crm-filter__input" type="text" inputmode="text" placeholder="e.g. Spring" maxlength="40" />
+              </label>
+              <label class="crm-filter__field crm-filter__field--row">
+                <input type="checkbox" data-cal-filter-campaign checked />
+                <span class="crm-filter__label crm-filter__label--inline">Show campaign launches</span>
+              </label>
+              <label class="crm-filter__field crm-filter__field--row">
+                <input type="checkbox" data-cal-filter-content checked />
+                <span class="crm-filter__label crm-filter__label--inline">Show content items</span>
+              </label>
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-filter-reset>All</button>
+                <button type="button" class="crm-filter__close" data-filter-close>Close</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -130,14 +146,49 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
     </main>
   `;
 
+  let cleanup = null;
+
   return {
     mount(target) {
       target.innerHTML = markup;
 
+      const pageRoot = target.querySelector(".dashboard-layout");
       const root = target.querySelector("[data-cal-root]");
       const grid = target.querySelector("[data-cal-grid]");
       const monthLabel = target.querySelector("[data-cal-month]");
       if (!root || !grid || !monthLabel) return;
+
+      const filterBtn = pageRoot?.querySelector("[data-filter-btn]") ?? null;
+      const filterPopover = pageRoot?.querySelector("[data-filter-popover]") ?? null;
+      const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
+      const chkCampaign = pageRoot?.querySelector("[data-cal-filter-campaign]") ?? null;
+      const chkContent = pageRoot?.querySelector("[data-cal-filter-content]") ?? null;
+
+      let filterTitlePrefix = "";
+      let showCampaigns = true;
+      let showContent = true;
+
+      const setFilterOpen = (open) => {
+        if (!filterBtn || !filterPopover) return;
+        filterPopover.classList.toggle("is-open", open);
+        filterPopover.setAttribute("aria-hidden", open ? "false" : "true");
+        filterBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open && filterInput) {
+          filterInput.focus();
+          filterInput.select?.();
+        }
+      };
+
+      const syncFilterStateFromInputs = () => {
+        filterTitlePrefix = String(filterInput?.value ?? "").trim().toLowerCase();
+        showCampaigns = Boolean(chkCampaign?.checked);
+        showContent = Boolean(chkContent?.checked);
+      };
+
+      const applyCalendarFilters = () => {
+        syncFilterStateFromInputs();
+        render();
+      };
 
       const state = { year: 0, month: 0 };
       const now = new Date();
@@ -208,7 +259,13 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
           days.push(d);
         }
 
-        const events = [...campaignEvents(), ...contentEvents(state.year, state.month)];
+        let events = [...campaignEvents(), ...contentEvents(state.year, state.month)];
+        events = events.filter((e) => {
+          if (e.kind === "campaign" && !showCampaigns) return false;
+          if (e.kind === "content" && !showContent) return false;
+          if (filterTitlePrefix && !String(e.title ?? "").toLowerCase().startsWith(filterTitlePrefix)) return false;
+          return true;
+        });
 
         // group events by week index to render spanning bars within each week row
         const weeks = Array.from({ length: 6 }, () => []);
@@ -267,7 +324,63 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
         }
       };
 
+      const onFilterInput = () => {
+        applyCalendarFilters();
+      };
+
+      const onFilterCheckChange = () => {
+        applyCalendarFilters();
+      };
+
+      filterInput?.addEventListener("input", onFilterInput);
+      chkCampaign?.addEventListener("change", onFilterCheckChange);
+      chkContent?.addEventListener("change", onFilterCheckChange);
+
+      const onKeyDown = (event) => {
+        if (event.key !== "Escape") return;
+        if (!filterPopover?.classList.contains("is-open")) return;
+        event.preventDefault();
+        setFilterOpen(false);
+      };
+      document.addEventListener("keydown", onKeyDown);
+
+      const onDocumentClickForFilter = (event) => {
+        if (!target.contains(event.target)) return;
+        if (event.target.closest?.("[data-filter-btn]")) return;
+        if (event.target.closest?.("[data-filter-popover]")) return;
+        setFilterOpen(false);
+      };
+      document.addEventListener("click", onDocumentClickForFilter, true);
+
       const onClick = (event) => {
+        const filterClose = event.target.closest?.("[data-filter-close]");
+        if (filterClose && filterPopover?.classList?.contains("is-open")) {
+          event.preventDefault();
+          setFilterOpen(false);
+          return;
+        }
+
+        const filterResetClick = event.target.closest?.("[data-filter-reset]");
+        if (filterResetClick) {
+          event.preventDefault();
+          if (filterInput) filterInput.value = "";
+          if (chkCampaign) chkCampaign.checked = true;
+          if (chkContent) chkContent.checked = true;
+          filterTitlePrefix = "";
+          showCampaigns = true;
+          showContent = true;
+          render();
+          setFilterOpen(false);
+          return;
+        }
+
+        const filterToggle = event.target.closest?.("[data-filter-btn]");
+        if (filterToggle) {
+          event.preventDefault();
+          setFilterOpen(!filterPopover?.classList?.contains("is-open"));
+          return;
+        }
+
         if (event.target.closest?.("[data-cal-prev]")) {
           state.month -= 1;
           if (state.month < 0) {
@@ -316,12 +429,19 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
       target.addEventListener("click", onClick);
       render();
 
-      this.unmount = () => {
+      cleanup = () => {
         target.removeEventListener("click", onClick);
+        filterInput?.removeEventListener("input", onFilterInput);
+        chkCampaign?.removeEventListener("change", onFilterCheckChange);
+        chkContent?.removeEventListener("change", onFilterCheckChange);
+        document.removeEventListener("keydown", onKeyDown);
+        document.removeEventListener("click", onDocumentClickForFilter, true);
       };
     },
-    // No global listeners to clean up, but keep the interface consistent.
-    unmount() {},
+    unmount() {
+      if (typeof cleanup === "function") cleanup();
+      cleanup = null;
+    },
   };
 }
 
@@ -337,21 +457,9 @@ function chevronRightIcon() {
 </svg>`;
 }
 
-function viewSwitchIcon() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="14" viewBox="0 0 15 14" fill="none">
-  <path d="M10.5 11.083C10.8208 11.083 11.083 11.3462 11.083 11.667C11.0828 11.9877 10.8207 12.25 10.5 12.25H0.583008C0.262431 12.2498 0.000177608 11.9876 0 11.667C0 11.3463 0.262322 11.0832 0.583008 11.083H10.5ZM13.417 6.41699C13.7377 6.41717 14 6.67928 14 7C14 7.32072 13.7377 7.58283 13.417 7.58301H3.5C3.17917 7.58301 2.91699 7.32083 2.91699 7C2.91699 6.67917 3.17917 6.41699 3.5 6.41699H13.417ZM10.5 1.75C10.8207 1.75 11.0828 2.01232 11.083 2.33301C11.083 2.65384 10.8208 2.91699 10.5 2.91699H0.583008C0.262322 2.91681 0 2.65373 0 2.33301C0.000177413 2.01243 0.262431 1.75018 0.583008 1.75H10.5Z" fill="#3A3A3A"/>
-</svg>`;
-}
-
 function filterIcon() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
   <path d="M11.1413 0C11.5794 0.000513872 12.008 0.128005 12.3757 0.366211C12.7433 0.604429 13.0351 0.943185 13.2145 1.34277C13.394 1.74248 13.4536 2.18603 13.3874 2.61914C13.3211 3.05214 13.1312 3.45646 12.8405 3.78418L8.74969 8.38867V13.417C8.7496 13.5716 8.68811 13.7198 8.57879 13.8291C8.46942 13.9384 8.3213 14 8.16668 14C8.04067 14 7.91795 13.9593 7.81707 13.8838L5.48308 12.1338C5.41064 12.0795 5.35171 12.0087 5.31121 11.9277C5.27076 11.8468 5.24974 11.7574 5.24969 11.667V8.38867L1.15691 3.78418C0.866331 3.45632 0.677105 3.05125 0.611014 2.61816C0.544923 2.18499 0.605188 1.74146 0.784842 1.3418C0.964512 0.942318 1.256 0.603263 1.62371 0.365234C1.99146 0.127221 2.42003 0.000316821 2.85808 0H11.1413ZM2.85808 1.16699C2.64493 1.16736 2.43641 1.22886 2.2575 1.34473C2.07852 1.46065 1.9368 1.62585 1.8493 1.82031C1.76182 2.01475 1.73239 2.2306 1.76433 2.44141C1.79632 2.652 1.88799 2.84912 2.02898 3.00879L6.26922 7.7793C6.36396 7.88607 6.41672 8.02424 6.41668 8.16699V11.375L7.58367 12.25V8.16699C7.58379 8.02417 7.63618 7.88599 7.73113 7.7793L11.9704 3.00977C12.1118 2.84998 12.204 2.65233 12.236 2.44141C12.268 2.2305 12.2386 2.01486 12.1511 1.82031C12.0635 1.6258 11.9219 1.46066 11.7428 1.34473C11.5638 1.22878 11.3546 1.16722 11.1413 1.16699H2.85808Z" fill="#3A3A3A"/>
-</svg>`;
-}
-
-function exportIcon() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-  <path d="M6.7168 0C7.80705 0 8.83274 0.425122 9.60449 1.19629L11.6367 3.22949C12.4079 4.00065 12.833 5.02481 12.833 6.11621V11.083C12.833 12.6912 11.5251 13.9998 9.91699 14H4.08301C2.47491 13.9998 1.16699 12.6911 1.16699 11.083V2.91699C1.16699 1.30885 2.47491 0.000181475 4.08301 0H6.7168ZM4.08301 1.16699C3.11833 1.16717 2.33301 1.95227 2.33301 2.91699V11.084C2.33304 12.0487 3.11835 12.8338 4.08301 12.834H9.91699C10.8817 12.8338 11.667 12.0487 11.667 11.084V6.11621C11.667 6.02114 11.6621 5.92633 11.6533 5.83301H8.75C7.78517 5.833 7 5.04784 7 4.08301V1.17969C6.90668 1.17094 6.81186 1.16699 6.7168 1.16699H4.08301ZM7 7.00098C7.32258 7.00098 7.58301 7.26198 7.58301 7.58398V10.1494L8.33789 9.39551C8.56597 9.16742 8.93403 9.16742 9.16211 9.39551C9.39018 9.62301 9.39019 9.99165 9.16211 10.2197L8.22168 11.1611C7.8851 11.4977 7.44217 11.667 7 11.667C6.55784 11.667 6.1149 11.4977 5.77832 11.1611L4.83789 10.2197C4.60981 9.99165 4.60983 9.62301 4.83789 9.39551C5.06597 9.16742 5.43403 9.16742 5.66211 9.39551L6.41699 10.1494V7.58398C6.41699 7.26199 6.67742 7.00098 7 7.00098ZM8.16602 4.08398C8.16605 4.40524 8.42723 4.66677 8.74902 4.66699H11.2812C11.1542 4.44554 10.9978 4.23945 10.8125 4.05469L10.8115 4.05371L8.7793 2.02051C8.5938 1.83502 8.38767 1.67794 8.16602 1.55078V4.08398Z" fill="#3A3A3A"/>
 </svg>`;
 }
 

@@ -1,6 +1,8 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
-import { escapeHtml } from "../utils/escapeHtml.js";
+import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
+import { createTablePagination, paginationBarHtml } from "../utils/tablePagination.js";
+import { normalizeSearchQuery, rowMatchesSearch } from "../utils/searchFilter.js";
 
 export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
   const isDashboard = currentRoute === "/" || currentRoute === "/dashboard";
@@ -148,31 +150,16 @@ export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
                   <th>Traffic Split</th>
                 </tr>
               </thead>
-              <tbody>
-                ${rows.map(renderRow).join("")}
-              </tbody>
+              <tbody></tbody>
             </table>
-            <div class="table-pagination" aria-label="Pagination">
-              <div class="table-pagination__left">Total campaigns: <span class="bold">87</span></div>
-              <div class="table-pagination__center">
-                <span class="table-pagination__muted">Prev</span>
-                <span class="table-pagination__page is-active">1</span>
-                <span class="table-pagination__page">2</span>
-                <span class="table-pagination__muted">…</span>
-                <span class="table-pagination__page">7</span>
-                <span class="table-pagination__muted">Next</span>
-              </div>
-              <div class="table-pagination__right">
-                <span class="table-pagination__muted">Go to page</span>
-                <span class="table-pagination__input" aria-hidden="true"></span>
-                <span class="table-pagination__muted">›</span>
-              </div>
-            </div>
+            ${paginationBarHtml("Total campaigns:")}
           </div>
         </section>
       </section>
     </main>
   `;
+
+  let cleanup = null;
 
   return {
     mount(target) {
@@ -181,6 +168,42 @@ export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
       const root = target.querySelector(".dashboard-layout");
       if (!root) return;
 
+      let filterPrefix = "";
+      let searchQuery = "";
+      const searchInput = root.querySelector(".campaign-search__input");
+      /** @type {null | ReturnType<typeof createTablePagination>} */
+      let paginationApi = null;
+      const refreshExperimentsTable = (opts) => paginationApi?.refresh(opts);
+
+      const getFilteredExperimentRows = () => {
+        const q = normalizeSearchQuery(searchQuery);
+        return rows.filter((r) => {
+          const n = String(r.testName ?? "").toLowerCase();
+          if (filterPrefix && !n.startsWith(filterPrefix)) return false;
+          return rowMatchesSearch(q, [r.testName, r.campaignName, r.status, r.trafficSplit]);
+        });
+      };
+
+      const applyPrefixFilter = (prefixRaw) => {
+        filterPrefix = String(prefixRaw ?? "").trim().toLowerCase();
+        refreshExperimentsTable({ resetPage: true });
+      };
+
+      paginationApi = createTablePagination({
+        root,
+        tableSelector: "table.campaign-table",
+        getItems: () => getFilteredExperimentRows(),
+        renderItemHtml: (item) => renderRow(item),
+        totalLabelText: "Total campaigns:",
+      });
+      refreshExperimentsTable();
+
+      const onSearchInput = () => {
+        searchQuery = String(searchInput?.value ?? "");
+        refreshExperimentsTable({ resetPage: true });
+      };
+      searchInput?.addEventListener("input", onSearchInput);
+
       const csvEscape = (v) => {
         const s = String(v ?? "");
         if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
@@ -188,14 +211,11 @@ export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
       };
 
       const exportExperimentsCsv = () => {
-        const table = root.querySelector("table.campaign-table");
-        if (!table) return;
-        const headers = Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent.trim());
-        const rows = Array.from(table.querySelectorAll("tbody tr"))
-          .filter((tr) => !tr.hasAttribute("hidden"))
-          .map((tr) => Array.from(tr.querySelectorAll("td")).map((td) => td.textContent.trim()));
+        const headers = ["Test Name", "Linked Campaign", "Status", "Traffic Split"];
+        const body = getFilteredExperimentRows();
+        const csvRows = body.map((r) => [r.testName, r.campaignName, r.status, r.trafficSplit]);
 
-        const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(",")).join("\r\n");
+        const csv = [headers, ...csvRows].map((r) => r.map(csvEscape).join(",")).join("\r\n");
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -210,15 +230,6 @@ export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
       const filterBtn = root.querySelector("[data-filter-btn]");
       const filterPopover = root.querySelector("[data-filter-popover]");
       const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
-
-      const applyPrefixFilter = (prefixRaw) => {
-        const prefix = String(prefixRaw ?? "").trim().toLowerCase();
-        root.querySelectorAll("tbody tr[data-test-name]").forEach((tr) => {
-          const name = String(tr.getAttribute("data-test-name") ?? "").toLowerCase();
-          const show = prefix === "" ? true : name.startsWith(prefix);
-          tr.toggleAttribute("hidden", !show);
-        });
-      };
 
       const setFilterOpen = (open) => {
         if (!filterBtn || !filterPopover) return;
@@ -284,14 +295,19 @@ export function ExperimentsPage({ currentRoute = "/experiments" } = {}) {
       };
       document.addEventListener("click", onDocumentClickForFilter, true);
 
-      this.unmount = () => {
+      cleanup = () => {
+        searchInput?.removeEventListener("input", onSearchInput);
+        paginationApi?.destroy();
+        paginationApi = null;
         root.removeEventListener("click", onRootClick);
         filterInput?.removeEventListener("input", onFilterInput);
         document.removeEventListener("keydown", onKeyDown);
         document.removeEventListener("click", onDocumentClickForFilter, true);
       };
     },
-    unmount() {},
+    unmount() {
+      if (typeof cleanup === "function") cleanup();
+    },
   };
 }
 
@@ -301,7 +317,7 @@ function row(testName, campaignName, status, trafficSplit) {
 
 function renderRow(item) {
   return `
-    <tr data-test-name="${escapeHtml(item.testName)}">
+    <tr data-test-name="${escapeHtmlAttr(item.testName)}">
       <td>${escapeHtml(item.testName)}</td>
       <td>${escapeHtml(item.campaignName)}</td>
       <td>${statusBadge(item.status)}</td>

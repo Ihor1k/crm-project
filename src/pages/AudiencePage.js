@@ -1,7 +1,9 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
-import { escapeHtml } from "../utils/escapeHtml.js";
+import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
 import { loadAudienceSegments, saveAudienceSegments, upsertAudienceSegment } from "../utils/crmStore.js";
+import { createTablePagination, paginationBarHtml } from "../utils/tablePagination.js";
+import { normalizeSearchQuery, rowMatchesSearch } from "../utils/searchFilter.js";
 
 export function AudiencePage({ currentRoute = "/audience" } = {}) {
 
@@ -119,10 +121,21 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
           </div>
 
           <div class="campaign-toolbar__actions">
-            <button type="button" class="ghost-btn">
+            <button type="button" class="ghost-btn" data-filter-btn aria-haspopup="dialog" aria-expanded="false">
               <span class="ghost-btn__icon" aria-hidden="true">${filterIcon()}</span>
               Filter
             </button>
+            <div class="crm-filter" data-filter-popover aria-hidden="true">
+              <div class="crm-filter__title">Filter</div>
+              <label class="crm-filter__field">
+                <span class="crm-filter__label">Segment name starts with</span>
+                <input class="crm-filter__input" type="text" inputmode="text" placeholder="e.g. N" maxlength="20" />
+              </label>
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-filter-reset>All</button>
+                <button type="button" class="crm-filter__close" data-filter-close>Close</button>
+              </div>
+            </div>
             <button type="button" class="ghost-btn">
               <span class="ghost-btn__icon" aria-hidden="true">${exportIcon()}</span>
               Export
@@ -150,54 +163,10 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                ${(() => {
-                  const stored = loadAudienceSegments();
-                  const seed = seededSegments(); // SEG-001..SEG-009
-
-                  if (!stored.length) {
-                    saveAudienceSegments(seed);
-                    return seed.map(renderRow).join("");
-                  }
-
-                  // Auto-append any missing seeded segments without overwriting user edits.
-                  const byId = new Map(stored.map((s) => [s?.id, s]));
-                  let changed = false;
-                  for (const seg of seed) {
-                    if (!byId.has(seg.id)) {
-                      byId.set(seg.id, seg);
-                      changed = true;
-                    }
-                  }
-
-                  const merged = Array.from(byId.values()).sort((a, b) => {
-                    const ai = Number(String(a?.id ?? "").replace(/\D+/g, "")) || 0;
-                    const bi = Number(String(b?.id ?? "").replace(/\D+/g, "")) || 0;
-                    return ai - bi;
-                  });
-
-                  if (changed) saveAudienceSegments(merged);
-                  return merged.map(renderRow).join("");
-                })()}
-              </tbody>
+              <tbody></tbody>
             </table>
 
-            <div class="table-pagination" aria-label="Pagination">
-              <div class="table-pagination__left">Total campaigns: <span class="bold">87</span></div>
-              <div class="table-pagination__center">
-                <span class="table-pagination__muted">Prev</span>
-                <span class="table-pagination__page is-active">1</span>
-                <span class="table-pagination__page">2</span>
-                <span class="table-pagination__muted">…</span>
-                <span class="table-pagination__page">7</span>
-                <span class="table-pagination__muted">Next</span>
-              </div>
-              <div class="table-pagination__right">
-                <span class="table-pagination__muted">Go to page</span>
-                <span class="table-pagination__input" aria-hidden="true"></span>
-                <span class="table-pagination__muted">›</span>
-              </div>
-            </div>
+            ${paginationBarHtml("Total campaigns:")}
           </div>
         </section>
 
@@ -264,6 +233,88 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
       const root = target.querySelector(".dashboard-layout");
       if (!root) return;
 
+      const mergeAudienceSegments = () => {
+        const stored = loadAudienceSegments();
+        const seed = seededSegments();
+
+        if (!stored.length) {
+          saveAudienceSegments(seed);
+          return seed;
+        }
+
+        const byId = new Map(stored.map((s) => [s?.id, s]));
+        let changed = false;
+        for (const seg of seed) {
+          if (!byId.has(seg.id)) {
+            byId.set(seg.id, seg);
+            changed = true;
+          }
+        }
+
+        const merged = Array.from(byId.values()).sort((a, b) => {
+          const ai = Number(String(a?.id ?? "").replace(/\D+/g, "")) || 0;
+          const bi = Number(String(b?.id ?? "").replace(/\D+/g, "")) || 0;
+          return ai - bi;
+        });
+
+        if (changed) saveAudienceSegments(merged);
+        return merged;
+      };
+
+      let searchQuery = "";
+      const searchInput = root.querySelector(".campaign-search__input");
+      let filterPrefix = "";
+      const filterBtn = root.querySelector("[data-filter-btn]");
+      const filterPopover = root.querySelector("[data-filter-popover]");
+      const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
+
+      const setFilterOpen = (open) => {
+        if (!filterBtn || !filterPopover) return;
+        filterPopover.classList.toggle("is-open", open);
+        filterPopover.setAttribute("aria-hidden", open ? "false" : "true");
+        filterBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open && filterInput) {
+          filterInput.focus();
+          filterInput.select?.();
+        }
+      };
+
+      const applyPrefixFilter = (prefixRaw) => {
+        filterPrefix = String(prefixRaw ?? "").trim().toLowerCase();
+        refreshAudienceTable({ resetPage: true });
+      };
+
+      /** @type {null | ReturnType<typeof createTablePagination>} */
+      let paginationApi = null;
+      const refreshAudienceTable = (opts) => paginationApi?.refresh(opts);
+
+      paginationApi = createTablePagination({
+        root,
+        tableSelector: "table.audience-table",
+        getItems: () => {
+          const q = normalizeSearchQuery(searchQuery);
+          return mergeAudienceSegments().filter((seg) => {
+            const nameNorm = String(seg.name ?? "").toLowerCase();
+            if (filterPrefix && !nameNorm.startsWith(filterPrefix)) return false;
+            return rowMatchesSearch(q, [seg.name, seg.description, seg.size, seg.id]);
+          });
+        },
+        renderItemHtml: (item) => renderRow(item),
+        totalLabelText: "Total campaigns:",
+      });
+      refreshAudienceTable();
+
+      const onSearchInput = () => {
+        searchQuery = String(searchInput?.value ?? "");
+        refreshAudienceTable({ resetPage: true });
+      };
+      searchInput?.addEventListener("input", onSearchInput);
+
+      const onFilterInput = () => {
+        applyPrefixFilter(filterInput?.value ?? "");
+      };
+      filterInput?.addEventListener("input", onFilterInput);
+
       const modal = root.querySelector("[data-segment-modal]");
       const titleEl = root.querySelector("[data-seg-title]");
       const nameEl = root.querySelector("[data-seg-name]");
@@ -304,14 +355,6 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
         if (defEl) defEl.textContent = seg.definition || "";
       };
 
-      const updateRow = (seg) => {
-        const tr = root.querySelector(`tr[data-seg-id="${seg.id}"]`);
-        if (!tr) return;
-        if (tr.children?.[0]) tr.children[0].textContent = seg.name;
-        if (tr.children?.[1]) tr.children[1].textContent = seg.description;
-        if (tr.children?.[2]) tr.children[2].textContent = seg.size;
-      };
-
       const clearErrors = () => {
         root.querySelectorAll(".is-invalid").forEach((el) => el.classList.remove("is-invalid"));
       };
@@ -331,6 +374,29 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
       };
 
       const onClick = (event) => {
+        const filterClose = event.target.closest?.("[data-filter-close]");
+        if (filterClose && filterPopover?.classList?.contains("is-open")) {
+          event.preventDefault();
+          setFilterOpen(false);
+          return;
+        }
+
+        const filterResetClick = event.target.closest?.("[data-filter-reset]");
+        if (filterResetClick) {
+          event.preventDefault();
+          if (filterInput) filterInput.value = "";
+          applyPrefixFilter("");
+          setFilterOpen(false);
+          return;
+        }
+
+        const filterToggle = event.target.closest?.("[data-filter-btn]");
+        if (filterToggle) {
+          event.preventDefault();
+          setFilterOpen(!filterPopover?.classList?.contains("is-open"));
+          return;
+        }
+
         const close = event.target.closest?.("[data-segment-close]");
         if (close && modal?.classList.contains("is-open")) {
           event.preventDefault();
@@ -373,25 +439,44 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
           };
           upsertAudienceSegment(updated);
           fill(updated);
-          updateRow(updated);
+          refreshAudienceTable();
           setEditing(false);
         }
       };
 
       const onKeyDown = (event) => {
         if (event.key !== "Escape") return;
-        if (!modal?.classList.contains("is-open")) return;
-        event.preventDefault();
-        setModalOpen(false);
+        if (modal?.classList.contains("is-open")) {
+          event.preventDefault();
+          setModalOpen(false);
+          return;
+        }
+        if (filterPopover?.classList.contains("is-open")) {
+          event.preventDefault();
+          setFilterOpen(false);
+        }
+      };
+
+      const onDocumentClickForFilter = (event) => {
+        if (!root.contains(event.target)) return;
+        if (event.target.closest?.("[data-filter-btn]")) return;
+        if (event.target.closest?.("[data-filter-popover]")) return;
+        setFilterOpen(false);
       };
 
       root.addEventListener("click", onClick);
       document.addEventListener("keydown", onKeyDown);
+      document.addEventListener("click", onDocumentClickForFilter, true);
       setEditing(false);
 
       cleanup = () => {
+        searchInput?.removeEventListener("input", onSearchInput);
+        filterInput?.removeEventListener("input", onFilterInput);
+        paginationApi?.destroy();
+        paginationApi = null;
         root.removeEventListener("click", onClick);
         document.removeEventListener("keydown", onKeyDown);
+        document.removeEventListener("click", onDocumentClickForFilter, true);
         document.documentElement.classList.remove("has-modal");
       };
     },
@@ -411,7 +496,7 @@ function row(name, description, size) {
 function renderRow(item) {
   const id = item.id ?? `SEG-${Math.floor(100 + Math.random() * 90000)}`;
   return `
-    <tr data-seg-id="${escapeHtml(id)}" style="cursor:pointer;">
+    <tr data-seg-id="${escapeHtmlAttr(id)}" style="cursor:pointer;">
       <td>${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.description)}</td>
       <td>${escapeHtml(item.size)}</td>

@@ -5,9 +5,31 @@ import {
   closeCampaignDatePickersIn,
   mountCampaignDatePickers,
 } from "../components/campaignDatePicker.js";
-import { escapeHtml } from "../utils/escapeHtml.js";
+import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
 import { loadCampaigns, saveCampaigns, upsertCampaign } from "../utils/crmStore.js";
+import { createTablePagination, paginationBarHtml } from "../utils/tablePagination.js";
+import { normalizeSearchQuery, rowMatchesSearch } from "../utils/searchFilter.js";
 
+function campaignIsoToDisplayDmy(iso) {
+  if (!iso) return "—";
+  const parts = String(iso).split("-");
+  if (parts.length !== 3) return "—";
+  const [y, m, d] = parts;
+  if (!y || !m || !d) return "—";
+  return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
+}
+
+function campaignStoredToRow(c) {
+  return row(
+    c.campaignName || "-",
+    c.id || "-",
+    c.status || "Draft",
+    c.geo || "—",
+    c.conv || "—",
+    campaignIsoToDisplayDmy(c.startDate),
+    campaignIsoToDisplayDmy(c.endDate),
+  );
+}
 
 export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
 
@@ -152,18 +174,93 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
 
         <section class="campaign-toolbar campaign-toolbar--filters" aria-label="Campaign filters">
           <div class="campaign-filters">
-            <button type="button" class="filter-pill"><span class="filter-pill__icon">${filterIcon()}</span> Status <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
+            <div class="filter-pill-wrap">
+            <button type="button" class="filter-pill" data-pill="status" aria-haspopup="dialog" aria-expanded="false"><span class="filter-pill__icon">${filterIcon()}</span> Status <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
             <path d="M10.834 0C10.9439 4.17446e-05 11.0528 0.0221865 11.1543 0.0644531C11.2557 0.106758 11.3484 0.168052 11.4258 0.246094C11.581 0.402224 11.668 0.613844 11.668 0.833984C11.668 1.05412 11.581 1.26574 11.4258 1.42188L7.60059 5.24609C7.13191 5.71419 6.49637 5.97746 5.83398 5.97754C5.17148 5.97754 4.53613 5.71426 4.06738 5.24609L0.242188 1.42188C0.0869784 1.26574 0 1.05414 0 0.833984C3.728e-06 0.613835 0.0869817 0.402226 0.242188 0.246094C0.319596 0.168127 0.412251 0.106707 0.513672 0.0644531C0.61514 0.0222235 0.724077 0 0.833984 0C0.943887 4.17132e-05 1.05284 0.0221864 1.1543 0.0644531C1.25575 0.106758 1.34838 0.168052 1.42578 0.246094L5.24219 4.06348C5.31961 4.14147 5.41223 4.20286 5.51367 4.24512C5.61515 4.28736 5.72406 4.30957 5.83398 4.30957C5.94389 4.30953 6.05285 4.28738 6.1543 4.24512C6.25573 4.20281 6.34839 4.14151 6.42578 4.06348L10.2422 0.246094C10.3196 0.168126 10.4123 0.106707 10.5137 0.0644531C10.6151 0.0222235 10.7241 0 10.834 0Z" fill="#8A8A8A"/>
           </svg></span></button>
-            <button type="button" class="filter-pill"><span class="filter-pill__icon">${geoIcon()}</span> Geo <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
+            <div class="crm-filter crm-filter--pill" data-pill-popover="status" aria-hidden="true">
+              <div class="crm-filter__title">Status</div>
+              <div class="crm-filter__checklist" data-status-checks>
+                ${["Running","Paused","Draft","Scheduled","Completed","Archived","Terminated"]
+                  .map(
+                    (s) => `<label class="crm-filter__check"><input type="checkbox" value="${escapeHtml(
+                      s,
+                    )}" /> <span>${escapeHtml(s)}</span></label>`,
+                  )
+                  .join("")}
+              </div>
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-pill-reset="status">All</button>
+                <button type="button" class="crm-filter__close" data-pill-close="status">Close</button>
+              </div>
+            </div>
+            </div>
+
+            <div class="filter-pill-wrap">
+            <button type="button" class="filter-pill" data-pill="geo" aria-haspopup="dialog" aria-expanded="false"><span class="filter-pill__icon">${geoIcon()}</span> Geo <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
             <path d="M10.834 0C10.9439 4.17446e-05 11.0528 0.0221865 11.1543 0.0644531C11.2557 0.106758 11.3484 0.168052 11.4258 0.246094C11.581 0.402224 11.668 0.613844 11.668 0.833984C11.668 1.05412 11.581 1.26574 11.4258 1.42188L7.60059 5.24609C7.13191 5.71419 6.49637 5.97746 5.83398 5.97754C5.17148 5.97754 4.53613 5.71426 4.06738 5.24609L0.242188 1.42188C0.0869784 1.26574 0 1.05414 0 0.833984C3.728e-06 0.613835 0.0869817 0.402226 0.242188 0.246094C0.319596 0.168127 0.412251 0.106707 0.513672 0.0644531C0.61514 0.0222235 0.724077 0 0.833984 0C0.943887 4.17132e-05 1.05284 0.0221864 1.1543 0.0644531C1.25575 0.106758 1.34838 0.168052 1.42578 0.246094L5.24219 4.06348C5.31961 4.14147 5.41223 4.20286 5.51367 4.24512C5.61515 4.28736 5.72406 4.30957 5.83398 4.30957C5.94389 4.30953 6.05285 4.28738 6.1543 4.24512C6.25573 4.20281 6.34839 4.14151 6.42578 4.06348L10.2422 0.246094C10.3196 0.168126 10.4123 0.106707 10.5137 0.0644531C10.6151 0.0222235 10.7241 0 10.834 0Z" fill="#8A8A8A"/>
           </svg></span></button>
-            <button type="button" class="filter-pill"><span class="filter-pill__icon">${activityIcon()}</span> Activity <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
+            <div class="crm-filter crm-filter--pill" data-pill-popover="geo" aria-hidden="true">
+              <div class="crm-filter__title">Geo</div>
+              <label class="crm-filter__field">
+                <span class="crm-filter__label">Geo equals</span>
+                <select class="crm-filter__input" data-geo-select>
+                  <option value="">All</option>
+                  ${["Global","EU","US","LATAM","APAC"].map((g)=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("")}
+                </select>
+              </label>
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-pill-reset="geo">All</button>
+                <button type="button" class="crm-filter__close" data-pill-close="geo">Close</button>
+              </div>
+            </div>
+            </div>
+
+            <div class="filter-pill-wrap">
+            <button type="button" class="filter-pill" data-pill="activity" aria-haspopup="dialog" aria-expanded="false"><span class="filter-pill__icon">${activityIcon()}</span> Activity <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
             <path d="M10.834 0C10.9439 4.17446e-05 11.0528 0.0221865 11.1543 0.0644531C11.2557 0.106758 11.3484 0.168052 11.4258 0.246094C11.581 0.402224 11.668 0.613844 11.668 0.833984C11.668 1.05412 11.581 1.26574 11.4258 1.42188L7.60059 5.24609C7.13191 5.71419 6.49637 5.97746 5.83398 5.97754C5.17148 5.97754 4.53613 5.71426 4.06738 5.24609L0.242188 1.42188C0.0869784 1.26574 0 1.05414 0 0.833984C3.728e-06 0.613835 0.0869817 0.402226 0.242188 0.246094C0.319596 0.168127 0.412251 0.106707 0.513672 0.0644531C0.61514 0.0222235 0.724077 0 0.833984 0C0.943887 4.17132e-05 1.05284 0.0221864 1.1543 0.0644531C1.25575 0.106758 1.34838 0.168052 1.42578 0.246094L5.24219 4.06348C5.31961 4.14147 5.41223 4.20286 5.51367 4.24512C5.61515 4.28736 5.72406 4.30957 5.83398 4.30957C5.94389 4.30953 6.05285 4.28738 6.1543 4.24512C6.25573 4.20281 6.34839 4.14151 6.42578 4.06348L10.2422 0.246094C10.3196 0.168126 10.4123 0.106707 10.5137 0.0644531C10.6151 0.0222235 10.7241 0 10.834 0Z" fill="#8A8A8A"/>
           </svg></span></button>
-            <button type="button" class="filter-pill"><span class="filter-pill__icon">${periodIcon()}</span> Period <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
+            <div class="crm-filter crm-filter--pill" data-pill-popover="activity" aria-hidden="true">
+              <div class="crm-filter__title">Activity</div>
+              <label class="crm-filter__field">
+                <span class="crm-filter__label">Updates</span>
+                <select class="crm-filter__input" data-activity-select>
+                  <option value="">All</option>
+                  <option value="with">With updates</option>
+                  <option value="none">No updates</option>
+                </select>
+              </label>
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-pill-reset="activity">All</button>
+                <button type="button" class="crm-filter__close" data-pill-close="activity">Close</button>
+              </div>
+            </div>
+            </div>
+
+            <div class="filter-pill-wrap">
+            <button type="button" class="filter-pill" data-pill="period" aria-haspopup="dialog" aria-expanded="false"><span class="filter-pill__icon">${periodIcon()}</span> Period <span class="filter-pill__caret"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="6" viewBox="0 0 12 6" fill="none">
             <path d="M10.834 0C10.9439 4.17446e-05 11.0528 0.0221865 11.1543 0.0644531C11.2557 0.106758 11.3484 0.168052 11.4258 0.246094C11.581 0.402224 11.668 0.613844 11.668 0.833984C11.668 1.05412 11.581 1.26574 11.4258 1.42188L7.60059 5.24609C7.13191 5.71419 6.49637 5.97746 5.83398 5.97754C5.17148 5.97754 4.53613 5.71426 4.06738 5.24609L0.242188 1.42188C0.0869784 1.26574 0 1.05414 0 0.833984C3.728e-06 0.613835 0.0869817 0.402226 0.242188 0.246094C0.319596 0.168127 0.412251 0.106707 0.513672 0.0644531C0.61514 0.0222235 0.724077 0 0.833984 0C0.943887 4.17132e-05 1.05284 0.0221864 1.1543 0.0644531C1.25575 0.106758 1.34838 0.168052 1.42578 0.246094L5.24219 4.06348C5.31961 4.14147 5.41223 4.20286 5.51367 4.24512C5.61515 4.28736 5.72406 4.30957 5.83398 4.30957C5.94389 4.30953 6.05285 4.28738 6.1543 4.24512C6.25573 4.20281 6.34839 4.14151 6.42578 4.06348L10.2422 0.246094C10.3196 0.168126 10.4123 0.106707 10.5137 0.0644531C10.6151 0.0222235 10.7241 0 10.834 0Z" fill="#8A8A8A"/>
           </svg></span></button>
+            <div class="crm-filter crm-filter--pill" data-pill-popover="period" aria-hidden="true">
+              <div class="crm-filter__title">Period</div>
+              ${campaignDatePickerField({
+                labelText: "From (start date)",
+                placeholder: "Select Start Date",
+                required: false,
+                fieldKey: "periodFrom",
+              })}
+              ${campaignDatePickerField({
+                labelText: "To (start date)",
+                placeholder: "Select Start Date",
+                required: false,
+                fieldKey: "periodTo",
+              })}
+              <div class="crm-filter__actions">
+                <button type="button" class="crm-filter__reset" data-pill-reset="period">All</button>
+                <button type="button" class="crm-filter__close" data-pill-close="period">Close</button>
+              </div>
+            </div>
+            </div>
           </div>
 
           <div class="campaign-toolbar__actions">
@@ -210,64 +307,9 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
                   <th class="campaign-table__actions-head" aria-label="Actions"></th>
                 </tr>
               </thead>
-              <tbody>
-                ${(() => {
-                  const isoToDmy = (iso) => {
-                    if (!iso) return "—";
-                    const parts = String(iso).split("-");
-                    if (parts.length !== 3) return "—";
-                    const [y, m, d] = parts;
-                    if (!y || !m || !d) return "—";
-                    return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
-                  };
-
-                  const stored = loadCampaigns();
-                  if (stored.length > 0) {
-                    return stored
-                      .map((c) =>
-                        renderRow(
-                          row(
-                            c.campaignName || "-",
-                            c.id || "-",
-                            c.status || "Draft",
-                            c.geo || "—",
-                            c.conv || "—",
-                            isoToDmy(c.startDate),
-                            isoToDmy(c.endDate),
-                          ),
-                        ),
-                      )
-                      .join("");
-                  }
-
-                  // Seed localStorage once so Launch Calendar + persistence work.
-                  const parseDmy = (s) => {
-                    const m = String(s || "").trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-                    if (!m) return "";
-                    const [, dd, mm, yyyy] = m;
-                    return `${yyyy}-${mm}-${dd}`;
-                  };
-                  const seeded = rows.map((r) => ({
-                    id: r.id,
-                    campaignName: r.name,
-                    status: r.status,
-                    geo: r.geo,
-                    conv: r.conv,
-                    channel: "",
-                    description: "",
-                    audienceSegment: "",
-                    startDate: parseDmy(r.created),
-                    endDate: parseDmy(r.end),
-                    linkedContent: "",
-                    contentType: "",
-                    purpose: "",
-                    history: [],
-                  }));
-                  saveCampaigns(seeded);
-                  return rows.map(renderRow).join("");
-                })()}
-              </tbody>
+              <tbody></tbody>
             </table>
+            ${paginationBarHtml("Total campaigns:")}
           </div>
         </section>
 
@@ -472,6 +514,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
         campaignName: r.name,
         status: r.status,
         geo: r.geo,
+        conv: r.conv,
         channel: "",
         description: "",
         audienceSegment: "",
@@ -493,6 +536,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     const modal = root.querySelector("[data-create-campaign-modal]");
     const createBtn = root.querySelector("[data-create-campaign-btn]");
     const saveBtn = root.querySelector("[data-save-campaign]");
+    const modalTitle = root.querySelector("#create-campaign-title");
 
     const overviewModal = root.querySelector("[data-campaign-overview-modal]");
     const overviewTitle = root.querySelector("[data-overview-title]");
@@ -508,12 +552,109 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     const filterInput = filterPopover?.querySelector(".crm-filter__input") ?? null;
     const filterReset = filterPopover?.querySelector("[data-filter-reset]") ?? null;
 
+    let filterPrefix = "";
+    let searchQuery = "";
+    const searchInput = root.querySelector(".campaign-search__input");
+    /** @type {Set<string>} */
+    const statusFilters = new Set();
+    let geoFilter = "";
+    /** @type {"" | "with" | "none"} */
+    let activityFilter = "";
+    let periodFrom = "";
+    let periodTo = "";
+
+    const pillButtons = Array.from(root.querySelectorAll('[data-pill]'));
+    const pillPopovers = Array.from(root.querySelectorAll('[data-pill-popover]'));
+    /** @type {null | string} */
+    let openPill = null;
+
+    const setPillOpen = (pillKey, open) => {
+      pillButtons.forEach((btn) => {
+        if (btn.getAttribute("data-pill") !== pillKey) return;
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      pillPopovers.forEach((pop) => {
+        if (pop.getAttribute("data-pill-popover") !== pillKey) return;
+        pop.classList.toggle("is-open", open);
+        pop.setAttribute("aria-hidden", open ? "false" : "true");
+      });
+      openPill = open ? pillKey : null;
+    };
+
+    const closeAllPills = () => {
+      if (!openPill) return;
+      setPillOpen(openPill, false);
+    };
+
+    const refreshAfterPillChange = () => {
+      refreshCampaignTable({ resetPage: true });
+    };
+
+    const getPeriodPickerIso = (fieldKey) => {
+      return String(
+        root.querySelector(`.crm-field[data-field="${cssEscape(fieldKey)}"] .crm-datepicker__value`)?.value ?? "",
+      ).trim();
+    };
+
+    const setPeriodPickerIso = (fieldKey, nextIso) => {
+      const field = root.querySelector(`.crm-field[data-field="${cssEscape(fieldKey)}"]`);
+      if (!field) return;
+      const hidden = field.querySelector(".crm-datepicker__value");
+      const textEl = field.querySelector(".crm-datepicker__text");
+      const placeholder = field.querySelector("[data-campaign-datepicker]")?.getAttribute("data-placeholder") || "";
+      const iso = String(nextIso ?? "").trim();
+      if (hidden) hidden.value = iso;
+      if (textEl) {
+        textEl.textContent = iso ? campaignIsoToDisplayDmy(iso) : placeholder;
+        textEl.classList.toggle("has-value", Boolean(iso));
+      }
+    };
+    /** @type {null | string} */
+    let editingCampaignId = null;
+    /** @type {null | ReturnType<typeof createTablePagination>} */
+    let paginationApi = null;
+    const refreshCampaignTable = (opts) => paginationApi?.refresh(opts);
+
+    const getFilteredCampaignsStored = () => {
+      const q = normalizeSearchQuery(searchQuery);
+      return loadCampaigns().filter((c) => {
+        const name = String(c?.campaignName ?? "").toLowerCase();
+        if (filterPrefix && !name.startsWith(filterPrefix)) return false;
+        if (statusFilters.size > 0 && !statusFilters.has(String(c?.status ?? ""))) return false;
+        if (geoFilter && String(c?.geo ?? "") !== geoFilter) return false;
+        if (activityFilter) {
+          const has = Array.isArray(c?.history) && c.history.length > 0;
+          if (activityFilter === "with" && !has) return false;
+          if (activityFilter === "none" && has) return false;
+        }
+        const startIso = String(c?.startDate ?? "").trim();
+        if (periodFrom && startIso && startIso < periodFrom) return false;
+        if (periodTo && startIso && startIso > periodTo) return false;
+        return rowMatchesSearch(q, [
+          c.campaignName,
+          c.id,
+          c.status,
+          c.geo,
+          c.conv,
+          c.channel,
+          c.description,
+          c.audienceSegment,
+          c.linkedContent,
+          c.contentType,
+          c.purpose,
+          campaignIsoToDisplayDmy(c.startDate),
+          campaignIsoToDisplayDmy(c.endDate),
+        ]);
+      });
+    };
+
     const setModalOpen = (open) => {
       if (!modal) return;
       if (!open) closeCampaignDatePickersIn(root);
       modal.classList.toggle("is-open", open);
       modal.setAttribute("aria-hidden", open ? "false" : "true");
       document.documentElement.classList.toggle("has-modal", open);
+      if (modalTitle) modalTitle.textContent = editingCampaignId ? "Edit Campaign" : "Create Campaign";
       if (open) {
         lastFocusedEl = document.activeElement;
         const firstField = modal.querySelector("input, select, button");
@@ -546,6 +687,55 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       const field = modal?.querySelector(`.crm-field[data-field="${key}"]`);
       const val = field?.querySelector?.(".crm-datepicker__value")?.value ?? "";
       return String(val).trim();
+    };
+
+    const setFieldValue = (key, nextValue) => {
+      const el = modal?.querySelector(`[data-field="${key}"]`);
+      if (!el) return;
+      el.value = String(nextValue ?? "");
+    };
+
+    const setDateValue = (key, iso) => {
+      const field = modal?.querySelector(`.crm-field[data-field="${key}"]`);
+      if (!field) return;
+      const hidden = field.querySelector(".crm-datepicker__value");
+      const textEl = field.querySelector(".crm-datepicker__text");
+      const placeholder = field.querySelector("[data-campaign-datepicker]")?.getAttribute("data-placeholder") || "";
+      const nextIso = String(iso ?? "").trim();
+      if (hidden) hidden.value = nextIso;
+      if (textEl) {
+        const display = nextIso ? campaignIsoToDisplayDmy(nextIso) : placeholder;
+        textEl.textContent = display;
+        textEl.classList.toggle("has-value", Boolean(nextIso));
+      }
+    };
+
+    const resetCampaignForm = () => {
+      clearFormErrors();
+      setFieldValue("campaignName", "");
+      setFieldValue("channel", "");
+      setFieldValue("description", "");
+      setFieldValue("geo", "");
+      setFieldValue("audienceSegment", "");
+      setDateValue("startDate", "");
+      setDateValue("endDate", "");
+      setFieldValue("linkedContent", "");
+      setFieldValue("contentType", "");
+      setFieldValue("purpose", "");
+    };
+
+    const fillCampaignForm = (c) => {
+      resetCampaignForm();
+      setFieldValue("campaignName", c?.campaignName ?? "");
+      setFieldValue("channel", c?.channel ?? "");
+      setFieldValue("description", c?.description ?? "");
+      setFieldValue("geo", c?.geo ?? "");
+      setFieldValue("audienceSegment", c?.audienceSegment ?? "");
+      setDateValue("startDate", c?.startDate ?? "");
+      setDateValue("endDate", c?.endDate ?? "");
+      setFieldValue("linkedContent", c?.linkedContent ?? "");
+      setFieldValue("contentType", c?.contentType ?? "");
+      setFieldValue("purpose", c?.purpose ?? "");
     };
 
     const clearFormErrors = () => {
@@ -599,11 +789,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     };
 
     const generateCampaignId = () => {
-      const existing = new Set(
-        Array.from(root.querySelectorAll("[data-row-menu]"))
-          .map((el) => String(el.getAttribute("data-row-menu") ?? "").trim())
-          .filter(Boolean),
-      );
+      const existing = new Set(loadCampaigns().map((c) => String(c?.id ?? "").trim()).filter(Boolean));
 
       for (let i = 0; i < 50; i++) {
         const digits = Math.floor(3 + Math.random() * 3); // 3..5
@@ -615,12 +801,6 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       }
 
       return `CMP-${Math.floor(100 + Math.random() * 900)}`;
-    };
-
-    const appendCampaignRow = (campaign) => {
-      const tbody = root.querySelector("table.campaign-table--manager tbody");
-      if (!tbody) return;
-      tbody.insertAdjacentHTML("beforeend", renderRow(campaign));
     };
 
     const csvEscape = (v) => {
@@ -637,12 +817,11 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
         .slice(0, 7)
         .map((th) => th.textContent.trim() || "");
 
-      const rows = Array.from(table.querySelectorAll("tbody tr"))
-        .filter((tr) => !tr.hasAttribute("hidden"))
-        .map((tr) => {
-          const tds = Array.from(tr.querySelectorAll("td")).slice(0, 7);
-          return tds.map((td) => td.textContent.trim());
-        });
+      const filtered = getFilteredCampaignsStored();
+      const rows = filtered.map((c) => {
+        const r = campaignStoredToRow(c);
+        return [r.name, r.id, r.status, r.geo, r.conv, r.created, r.end];
+      });
 
       const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(",")).join("\r\n");
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -825,13 +1004,24 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     };
 
     const applyPrefixFilter = (prefixRaw) => {
-      const prefix = String(prefixRaw ?? "").trim().toLowerCase();
-      root.querySelectorAll("tbody tr[data-campaign-name]").forEach((tr) => {
-        const name = String(tr.getAttribute("data-campaign-name") ?? "").toLowerCase();
-        const show = prefix === "" ? true : name.startsWith(prefix);
-        tr.toggleAttribute("hidden", !show);
-      });
+      filterPrefix = String(prefixRaw ?? "").trim().toLowerCase();
+      refreshCampaignTable({ resetPage: true });
     };
+
+    paginationApi = createTablePagination({
+      root,
+      tableSelector: "table.campaign-table--manager",
+      getItems: () => getFilteredCampaignsStored().map(campaignStoredToRow),
+      renderItemHtml: (item) => renderRow(item),
+      totalLabelText: "Total campaigns:",
+    });
+    refreshCampaignTable();
+
+    const onSearchInput = () => {
+      searchQuery = String(searchInput?.value ?? "");
+      refreshCampaignTable({ resetPage: true });
+    };
+    searchInput?.addEventListener("input", onSearchInput);
 
     const setFilterOpen = (open) => {
       if (!filterBtn || !filterPopover) return;
@@ -855,6 +1045,11 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
         setFilterOpen(false);
         return;
       }
+      if (event.key === "Escape" && openPill) {
+        event.preventDefault();
+        closeAllPills();
+        return;
+      }
       if (event.key !== "Escape") return;
       if (overviewModal?.classList?.contains("is-open")) {
         event.preventDefault();
@@ -863,6 +1058,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       }
       if (!modal || !modal.classList.contains("is-open")) return;
       event.preventDefault();
+      editingCampaignId = null;
       setModalOpen(false);
     };
 
@@ -886,9 +1082,61 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
         return;
       }
 
+      const pillBtn = event.target.closest?.("[data-pill]");
+      if (pillBtn && root.contains(pillBtn)) {
+        event.preventDefault();
+        const key = pillBtn.getAttribute("data-pill");
+        if (!key) return;
+        if (openPill === key) setPillOpen(key, false);
+        else {
+          closeAllPills();
+          setPillOpen(key, true);
+        }
+        return;
+      }
+
+      const pillClose = event.target.closest?.("[data-pill-close]");
+      if (pillClose) {
+        event.preventDefault();
+        const key = pillClose.getAttribute("data-pill-close");
+        if (key) setPillOpen(key, false);
+        return;
+      }
+
+      const pillReset = event.target.closest?.("[data-pill-reset]");
+      if (pillReset) {
+        event.preventDefault();
+        const key = pillReset.getAttribute("data-pill-reset");
+        if (!key) return;
+        if (key === "status") {
+          statusFilters.clear();
+          root.querySelectorAll('[data-pill-popover="status"] input[type="checkbox"]').forEach((el) => {
+            el.checked = false;
+          });
+        } else if (key === "geo") {
+          geoFilter = "";
+          const sel = root.querySelector("[data-geo-select]");
+          if (sel) sel.value = "";
+        } else if (key === "activity") {
+          activityFilter = "";
+          const sel = root.querySelector("[data-activity-select]");
+          if (sel) sel.value = "";
+        } else if (key === "period") {
+          periodFrom = "";
+          periodTo = "";
+          setPeriodPickerIso("periodFrom", "");
+          setPeriodPickerIso("periodTo", "");
+          closeCampaignDatePickersIn(root);
+        }
+        refreshAfterPillChange();
+        setPillOpen(key, false);
+        return;
+      }
+
       const modalClose = event.target.closest?.("[data-modal-close]");
       if (modalClose && modal && modal.classList.contains("is-open")) {
         event.preventDefault();
+        editingCampaignId = null;
         setModalOpen(false);
         return;
       }
@@ -897,6 +1145,36 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       if (overviewClose && overviewModal?.classList?.contains("is-open")) {
         event.preventDefault();
         setOverviewOpen(false);
+        return;
+      }
+
+      const duplicateFromOverview = event.target.closest?.("[data-duplicate-campaign]");
+      if (duplicateFromOverview && overviewModal?.classList?.contains("is-open")) {
+        event.preventDefault();
+        if (state.savedCampaign) {
+          const newId = generateCampaignId();
+          const dup = {
+            ...state.savedCampaign,
+            id: newId,
+            campaignName: `${state.savedCampaign.campaignName || "Campaign"} (Copy)`,
+            history: Array.isArray(state.savedCampaign.history) ? state.savedCampaign.history.slice() : [],
+          };
+          dup.history.push({ time: formatNow(), text: `was duplicated from ${state.savedCampaign.id}` });
+          upsertCampaign(dup);
+          refreshCampaignTable({ resetPage: true });
+        }
+        return;
+      }
+
+      const editFromOverview = event.target.closest?.("[data-edit-campaign]");
+      if (editFromOverview && overviewModal?.classList?.contains("is-open")) {
+        event.preventDefault();
+        if (state.savedCampaign?.id) {
+          editingCampaignId = String(state.savedCampaign.id);
+          fillCampaignForm(state.savedCampaign);
+          setOverviewOpen(false);
+          setModalOpen(true);
+        }
         return;
       }
 
@@ -920,6 +1198,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
           });
           renderOverview();
           upsertCampaign(state.savedCampaign);
+          refreshCampaignTable();
         }
         setStatusPopupOpen(false);
         return;
@@ -951,6 +1230,8 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       const createCampaign = event.target.closest?.("[data-create-campaign-btn]");
       if (createCampaign) {
         event.preventDefault();
+        editingCampaignId = null;
+        resetCampaignForm();
         setModalOpen(true);
         return;
       }
@@ -959,6 +1240,38 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       if (saveCampaign) {
         event.preventDefault();
         if (!validateCampaignForm()) return;
+        if (editingCampaignId) {
+          const existing = loadCampaigns().find((c) => String(c?.id) === String(editingCampaignId));
+          if (!existing) {
+            editingCampaignId = null;
+            setModalOpen(false);
+            return;
+          }
+
+          const updated = {
+            ...existing,
+            campaignName: getFieldValue("campaignName"),
+            channel: getFieldValue("channel"),
+            description: getFieldValue("description"),
+            geo: getFieldValue("geo"),
+            audienceSegment: getFieldValue("audienceSegment"),
+            startDate: getDateValue("startDate"),
+            endDate: getDateValue("endDate"),
+            linkedContent: getFieldValue("linkedContent"),
+            contentType: getFieldValue("contentType"),
+            purpose: getFieldValue("purpose"),
+          };
+          updated.history = Array.isArray(updated.history) ? updated.history : [];
+          updated.history.push({ time: formatNow(), text: "was edited" });
+          upsertCampaign(updated);
+          state.savedCampaign = updated;
+          refreshCampaignTable();
+          renderOverview();
+          editingCampaignId = null;
+          setModalOpen(false);
+          return;
+        }
+
         const campaignName = getFieldValue("campaignName");
         const linkedContent = getFieldValue("linkedContent");
         const newId = generateCampaignId();
@@ -968,6 +1281,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
           channel: getFieldValue("channel"),
           description: getFieldValue("description"),
           geo: getFieldValue("geo"),
+          conv: "—",
           audienceSegment: getFieldValue("audienceSegment"),
           startDate: getDateValue("startDate"),
           endDate: getDateValue("endDate"),
@@ -980,15 +1294,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
 
         upsertCampaign(state.savedCampaign);
 
-        appendCampaignRow({
-          name: campaignName,
-          id: newId,
-          status: "Draft",
-          geo: getFieldValue("geo"),
-          conv: "—",
-          created: formatIsoToDisplay(getDateValue("startDate")) || "—",
-          end: formatIsoToDisplay(getDateValue("endDate")) || "—",
-        });
+        refreshCampaignTable({ resetPage: true });
 
         setModalOpen(false);
         setActiveTab("Summary");
@@ -1028,6 +1334,71 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
         return;
       }
 
+      const rowActionBtn = event.target.closest?.("[data-row-action][data-row-id]");
+      if (rowActionBtn && root.contains(rowActionBtn)) {
+        event.preventDefault();
+        event.stopPropagation();
+        const rowId = String(rowActionBtn.getAttribute("data-row-id") ?? "").trim();
+        const action = String(rowActionBtn.getAttribute("data-row-action") ?? "").trim();
+        if (!rowId || !action) return;
+
+        const list = loadCampaigns();
+        const idx = list.findIndex((c) => String(c?.id ?? "") === rowId);
+        const current = idx >= 0 ? list[idx] : null;
+
+        const setStatus = (nextStatus) => {
+          if (!current) return;
+          const updated = {
+            ...current,
+            status: nextStatus,
+            history: Array.isArray(current.history) ? current.history.slice() : [],
+          };
+          updated.history.push({ time: formatNow(), text: `was ${String(nextStatus).toLowerCase()}` });
+          upsertCampaign(updated);
+          if (state.savedCampaign?.id === updated.id) state.savedCampaign = updated;
+          refreshCampaignTable();
+          renderOverview();
+        };
+
+        if (action === "activate") {
+          setStatus("Running");
+        } else if (action === "pause") {
+          setStatus("Paused");
+        } else if (action === "terminate-new") {
+          setStatus("Terminated");
+        } else if (action === "terminate") {
+          if (current) {
+            const next = list.filter((c) => String(c?.id ?? "") !== rowId);
+            saveCampaigns(next);
+            if (state.savedCampaign?.id === rowId) state.savedCampaign = null;
+            refreshCampaignTable({ resetPage: true });
+            setOverviewOpen(false);
+          }
+        } else if (action === "duplicate") {
+          if (current) {
+            const newId = generateCampaignId();
+            const dup = {
+              ...current,
+              id: newId,
+              campaignName: `${current.campaignName || "Campaign"} (Copy)`,
+              history: Array.isArray(current.history) ? current.history.slice() : [],
+            };
+            dup.history.push({ time: formatNow(), text: `was duplicated from ${current.id}` });
+            upsertCampaign(dup);
+            refreshCampaignTable({ resetPage: true });
+          }
+        } else if (action === "edit") {
+          if (current) {
+            editingCampaignId = rowId;
+            fillCampaignForm(current);
+            setModalOpen(true);
+          }
+        }
+
+        closeMenu();
+        return;
+      }
+
       if (event.target.closest(".row-menu")) return;
 
       closeMenu();
@@ -1049,6 +1420,63 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     };
     document.addEventListener("click", onDocumentClickForFilter, true);
 
+    const onDocumentClickForPills = (event) => {
+      if (!openPill) return;
+      if (!target.contains(event.target)) return;
+      if (event.target.closest?.("[data-pill]")) return;
+      if (event.target.closest?.("[data-pill-popover]")) return;
+      closeAllPills();
+    };
+    document.addEventListener("click", onDocumentClickForPills, true);
+
+    const onPillChange = (event) => {
+      const statusCb = event.target.closest?.('[data-pill-popover="status"] input[type="checkbox"]');
+      if (statusCb) {
+        const v = String(statusCb.value ?? "").trim();
+        if (!v) return;
+        if (statusCb.checked) statusFilters.add(v);
+        else statusFilters.delete(v);
+        refreshAfterPillChange();
+        return;
+      }
+
+      const geoSel = event.target.closest?.("[data-geo-select]");
+      if (geoSel) {
+        geoFilter = String(geoSel.value ?? "").trim();
+        refreshAfterPillChange();
+        return;
+      }
+
+      const activitySel = event.target.closest?.("[data-activity-select]");
+      if (activitySel) {
+        activityFilter = String(activitySel.value ?? "").trim();
+        refreshAfterPillChange();
+        return;
+      }
+
+      const fromEl = event.target.closest?.("[data-period-from]");
+      const toEl = event.target.closest?.("[data-period-to]");
+      if (fromEl || toEl) {
+        // handled by crm-datepicker click handler below
+      }
+    };
+    root.addEventListener("input", onPillChange);
+    root.addEventListener("change", onPillChange);
+
+    const onPillDatepickerClick = (event) => {
+      const dayBtn = event.target.closest?.(".crm-datepicker__day");
+      if (!dayBtn || !root.contains(dayBtn)) return;
+      const field = dayBtn.closest?.('.crm-field[data-field="periodFrom"], .crm-field[data-field="periodTo"]');
+      if (!field) return;
+      // allow datepicker to sync hidden values first
+      queueMicrotask(() => {
+        periodFrom = getPeriodPickerIso("periodFrom");
+        periodTo = getPeriodPickerIso("periodTo");
+        refreshAfterPillChange();
+      });
+    };
+    root.addEventListener("click", onPillDatepickerClick);
+
     const onDocumentClickCapture = (event) => {
       if (!target.contains(event.target)) return;
       if (event.target.closest("[data-row-dots]")) return;
@@ -1065,11 +1493,18 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     const disposeDatePickers = mountCampaignDatePickers(root);
 
     cleanup = () => {
+      searchInput?.removeEventListener("input", onSearchInput);
+      paginationApi?.destroy();
+      paginationApi = null;
       disposeDatePickers();
       root.removeEventListener("click", onRootClick);
       document.removeEventListener("keydown", onKeyDown);
       filterInput?.removeEventListener("input", onFilterInput);
       document.removeEventListener("click", onDocumentClickForFilter, true);
+      document.removeEventListener("click", onDocumentClickForPills, true);
+      root.removeEventListener("input", onPillChange);
+      root.removeEventListener("change", onPillChange);
+      root.removeEventListener("click", onPillDatepickerClick);
       document.documentElement.classList.remove("has-modal");
       document.removeEventListener("click", onDocumentClickCapture, { capture: true });
       cleanup = null;
@@ -1091,7 +1526,7 @@ function row(name, id, status, geo, conv, created, end) {
 function renderRow(item) {
   const rowId = item.id;
   return `
-    <tr data-campaign-name="${escapeHtml(item.name)}">
+    <tr data-campaign-name="${escapeHtmlAttr(item.name)}">
       <td>${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.id)}</td>
       <td>${statusBadge(item.status)}</td>
@@ -1105,11 +1540,22 @@ function renderRow(item) {
             ${dotsIcon()}
           </button>
           <div class="row-menu" data-row-menu="${escapeHtml(rowId)}" role="menu" aria-label="Row actions">
-            <button type="button" role="menuitem"><span class="row-menu__icon">${menuActivateIcon()}</span>Activate</button>
-            <button type="button" role="menuitem"><span class="row-menu__icon">${menuPauseIcon()}</span>Pause</button>
-            <button type="button" role="menuitem"><span class="row-menu__icon">${menuDuplicateIcon()}</span>Duplicate</button>
-            <button type="button" role="menuitem" class="is-danger">Terminate</button>
-            <button type="button" role="menuitem" class="is-danger">Terminate New Entries</button>
+            <button type="button" role="menuitem" data-row-action="activate" data-row-id="${escapeHtmlAttr(
+              rowId,
+            )}"><span class="row-menu__icon">${menuActivateIcon()}</span>Activate</button>
+            <button type="button" role="menuitem" data-row-action="pause" data-row-id="${escapeHtmlAttr(
+              rowId,
+            )}"><span class="row-menu__icon">${menuPauseIcon()}</span>Pause</button>
+            <button type="button" role="menuitem" data-row-action="duplicate" data-row-id="${escapeHtmlAttr(
+              rowId,
+            )}"><span class="row-menu__icon">${menuDuplicateIcon()}</span>Duplicate</button>
+            <button type="button" role="menuitem" data-row-action="edit" data-row-id="${escapeHtmlAttr(rowId)}">Edit</button>
+            <button type="button" role="menuitem" class="is-danger" data-row-action="terminate" data-row-id="${escapeHtmlAttr(
+              rowId,
+            )}">Terminate</button>
+            <button type="button" role="menuitem" class="is-danger" data-row-action="terminate-new" data-row-id="${escapeHtmlAttr(
+              rowId,
+            )}">Terminate New Entries</button>
           </div>
         </div>
       </td>
