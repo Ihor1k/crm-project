@@ -17,6 +17,14 @@ export default defineConfig({
   // Use a relative base so the build works on GitHub Pages
   // regardless of the repo name / casing (and also from file:// previews).
   base: "./",
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
+  },
   
   build: {
     outDir: resolve(__dirname, "dist"),

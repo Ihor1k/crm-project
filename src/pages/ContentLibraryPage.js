@@ -1,7 +1,13 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
-import { deleteContentItem, loadContentItems, saveContentItems, upsertContentItem } from "../utils/crmStore.js";
+import {
+  deleteContentItem,
+  loadContentItems,
+  saveContentItems,
+  subscribeStore,
+  upsertContentItem,
+} from "../utils/crmStore.js";
 import { createTablePagination, paginationBarHtml } from "../utils/tablePagination.js";
 import { normalizeSearchQuery, rowMatchesSearch } from "../utils/searchFilter.js";
 import contentLibraryImg1 from "../images/content-library-1.png";
@@ -269,7 +275,7 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     const root = target.querySelector(".dashboard-layout");
     if (!root) return;
 
-    // Seed localStorage once so Launch Calendar can use it.
+    // Seed once (now via shared API store).
     if (loadContentItems().length === 0) {
       const seeded = rows.map((r, idx) => ({
         id: `CL-${String(idx + 1).padStart(3, "0")}`,
@@ -792,7 +798,10 @@ export function ContentLibraryPage({ currentRoute = "/content-library" } = {}) {
     fileInput?.addEventListener("change", onFileChosen);
     urlInput?.addEventListener("input", onUrlInput);
 
+    const unsubscribeContent = subscribeStore("content", () => refreshContentTable());
+
     cleanup = () => {
+      unsubscribeContent();
       searchInput?.removeEventListener("input", onSearchInput);
       paginationApi?.destroy();
       paginationApi = null;

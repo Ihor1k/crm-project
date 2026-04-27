@@ -6,7 +6,7 @@ import {
   mountCampaignDatePickers,
 } from "../components/campaignDatePicker.js";
 import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
-import { loadCampaigns, saveCampaigns, upsertCampaign } from "../utils/crmStore.js";
+import { loadCampaigns, saveCampaigns, upsertCampaign, deleteCampaign, subscribeStore } from "../utils/crmStore.js";
 import { createTablePagination, paginationBarHtml } from "../utils/tablePagination.js";
 import { normalizeSearchQuery, rowMatchesSearch } from "../utils/searchFilter.js";
 
@@ -19,11 +19,18 @@ function campaignIsoToDisplayDmy(iso) {
   return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
 }
 
+function normalizeCampaignStatus(status) {
+  const s = String(status ?? "").trim();
+  if (!s) return s;
+  if (s.toLowerCase() === "active") return "Running";
+  return s;
+}
+
 function campaignStoredToRow(c) {
   return row(
     c.campaignName || "-",
     c.id || "-",
-    c.status || "Draft",
+    normalizeCampaignStatus(c.status) || "Draft",
     c.geo || "—",
     c.conv || "—",
     campaignIsoToDisplayDmy(c.startDate),
@@ -501,7 +508,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
   `;
 
   function mount(target) {
-    // Seed localStorage once so Launch Calendar can use it.
+    // Seed once (now via shared API store).
     if (loadCampaigns().length === 0) {
       const parseDmy = (s) => {
         const m = String(s || "").trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
@@ -620,7 +627,8 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       return loadCampaigns().filter((c) => {
         const name = String(c?.campaignName ?? "").toLowerCase();
         if (filterPrefix && !name.startsWith(filterPrefix)) return false;
-        if (statusFilters.size > 0 && !statusFilters.has(String(c?.status ?? ""))) return false;
+        const statusNorm = normalizeCampaignStatus(c?.status);
+        if (statusFilters.size > 0 && !statusFilters.has(String(statusNorm ?? ""))) return false;
         if (geoFilter && String(c?.geo ?? "") !== geoFilter) return false;
         if (activityFilter) {
           const has = Array.isArray(c?.history) && c.history.length > 0;
@@ -633,7 +641,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
         return rowMatchesSearch(q, [
           c.campaignName,
           c.id,
-          c.status,
+          statusNorm,
           c.geo,
           c.conv,
           c.channel,
@@ -1368,8 +1376,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
           setStatus("Terminated");
         } else if (action === "terminate") {
           if (current) {
-            const next = list.filter((c) => String(c?.id ?? "") !== rowId);
-            saveCampaigns(next);
+            deleteCampaign(rowId);
             if (state.savedCampaign?.id === rowId) state.savedCampaign = null;
             refreshCampaignTable({ resetPage: true });
             setOverviewOpen(false);
@@ -1491,6 +1498,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
     );
 
     const disposeDatePickers = mountCampaignDatePickers(root);
+    const unsubscribeCampaigns = subscribeStore("campaigns", () => refreshCampaignTable());
 
     cleanup = () => {
       searchInput?.removeEventListener("input", onSearchInput);
@@ -1507,6 +1515,7 @@ export function CampaignPage({ currentRoute = "/campaigns" } = {}) {
       root.removeEventListener("click", onPillDatepickerClick);
       document.documentElement.classList.remove("has-modal");
       document.removeEventListener("click", onDocumentClickCapture, { capture: true });
+      unsubscribeCampaigns();
       cleanup = null;
     };
   }

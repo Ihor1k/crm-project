@@ -1,7 +1,7 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
 import { escapeHtml, escapeHtmlAttr } from "../utils/escapeHtml.js";
-import { loadAudienceSegments, saveAudienceSegments, upsertAudienceSegment } from "../utils/crmStore.js";
+import { loadAudienceSegments, saveAudienceSegments, subscribeStore, upsertAudienceSegment } from "../utils/crmStore.js";
 import { createTablePagination, paginationBarHtml } from "../utils/tablePagination.js";
 import { normalizeSearchQuery, rowMatchesSearch } from "../utils/searchFilter.js";
 
@@ -469,7 +469,10 @@ export function AudiencePage({ currentRoute = "/audience" } = {}) {
       document.addEventListener("click", onDocumentClickForFilter, true);
       setEditing(false);
 
+      const unsubscribeAudience = subscribeStore("audience", () => refreshAudienceTable());
+
       cleanup = () => {
+        unsubscribeAudience();
         searchInput?.removeEventListener("input", onSearchInput);
         filterInput?.removeEventListener("input", onFilterInput);
         paginationApi?.destroy();

@@ -1,6 +1,6 @@
 import { SidebarNavItem } from "../components/SidebarNavItem.js";
 import { brandAssets } from "../assets/brand.js";
-import { loadCampaigns, loadContentItems } from "../utils/crmStore.js";
+import { loadCampaigns, loadContentItems, subscribeStore } from "../utils/crmStore.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
 export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
@@ -429,6 +429,9 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
       target.addEventListener("click", onClick);
       render();
 
+      const unsubscribeCampaigns = subscribeStore("campaigns", () => render());
+      const unsubscribeContent = subscribeStore("content", () => render());
+
       cleanup = () => {
         target.removeEventListener("click", onClick);
         filterInput?.removeEventListener("input", onFilterInput);
@@ -436,6 +439,8 @@ export function LaunchCalendarPage({ currentRoute = "/launch-calendar" } = {}) {
         chkContent?.removeEventListener("change", onFilterCheckChange);
         document.removeEventListener("keydown", onKeyDown);
         document.removeEventListener("click", onDocumentClickForFilter, true);
+        unsubscribeCampaigns();
+        unsubscribeContent();
       };
     },
     unmount() {
